@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .aggregate import ExportTable
 from .api import DAY_SEC, HOUR_SEC, UsageDataset, sec_to_local_dt
+from .i18n import current_lang, tr, tr_col
 
 # ---- 报纸配色 --------------------------------------------------------------
 
@@ -155,10 +156,14 @@ def chart_bar(rows: Sequence[Tuple[str, float]], title: str,
 
 
 def chart_stacked(rows: Sequence[Tuple[str, float, float, float]], title: str,
-                  h: int = 288, max_bars: int = 31) -> str:
+                  h: int = 288, max_bars: int = 31, lang: Optional[str] = None) -> str:
     """堆叠柱状图：每项 (label, a, b, c) → 缓存命中 / 缓存未命中 / 输出。"""
+    lang = lang or current_lang()
+    hit_name = tr(lang, "legend_hit")
+    miss_name = tr(lang, "legend_miss")
+    out_name = tr(lang, "legend_output")
     if len(rows) > max_bars:
-        return chart_line([(l, a + b + c) for l, a, b, c in rows], title, "Token 合计", h=h)
+        return chart_line([(l, a + b + c) for l, a, b, c in rows], title, tr(lang, "tokens_total"), h=h)
     w = 760
     pad_l, pad_r, pad_t, pad_b = 52, 12, 46, 58
     plot_w = w - pad_l - pad_r
@@ -184,10 +189,10 @@ def chart_stacked(rows: Sequence[Tuple[str, float, float, float]], title: str,
     for i, (label, a, b, c) in enumerate(rows):
         x = pad_l + slot * i + (slot - bar_w) / 2
         y = pad_t + plot_h
-        seg_detail = (f"缓存命中 {_fmt_full(a)} · 缓存未命中 {_fmt_full(b)} · 输出 {_fmt_full(c)}\n"
-                      f"Token 合计 {_fmt_full(a + b + c)}")
-        for v, color, name in ((c, colors[2], "输出"), (b, colors[1], "缓存未命中"),
-                               (a, colors[0], "缓存命中")):
+        seg_detail = (f"{hit_name} {_fmt_full(a)} · {miss_name} {_fmt_full(b)} · {out_name} {_fmt_full(c)}\n"
+                      f"{tr(lang, 'tokens_total')} {_fmt_full(a + b + c)}")
+        for v, color, name in ((c, colors[2], out_name), (b, colors[1], miss_name),
+                               (a, colors[0], hit_name)):
             bh = (v / tmax) * plot_h if v > 0 else 0
             if bh > 0:
                 parts.append(f'<rect class="v-bar" x="{x:.1f}" y="{y - bh:.1f}" width="{bar_w:.1f}" '
@@ -209,7 +214,7 @@ def chart_stacked(rows: Sequence[Tuple[str, float, float, float]], title: str,
               + "".join(
                   f'<rect x="{72 + i * 150}" y="{h - 26}" width="10" height="10" fill="{colors[i]}"/>'
                   f'<text x="{86 + i * 150}" y="{h - 17}">{name}</text>'
-                  for i, name in enumerate(("缓存命中", "缓存未命中", "输出")))
+                  for i, name in enumerate((hit_name, miss_name, out_name)))
               + "</g>")
     parts.append(legend)
     return _svg_wrap("".join(parts), w, h)
@@ -276,8 +281,10 @@ def chart_line(rows: Sequence[Tuple[str, float]], title: str,
 
 
 def chart_donut(items: Sequence[Tuple[str, float]], title: str,
-                cx: int = 200, cy: int = 150, r: int = 96) -> str:
+                cx: int = 200, cy: int = 150, r: int = 96,
+                lang: Optional[str] = None) -> str:
     """环形图（模型/Key 费用占比）。"""
+    lang = lang or current_lang()
     total = sum(v for _, v in items) or 1
     w, h = 760, 300
     parts = [f'<text x="20" y="24" font-family="{FONT}" font-size="15" '
@@ -308,7 +315,7 @@ def chart_donut(items: Sequence[Tuple[str, float]], title: str,
     parts.append(f'<text x="{cx}" y="{cy - 4}" text-anchor="middle" font-family="{FONT}" '
                  f'font-size="19" font-weight="bold" fill="{INK}">{_fmt_num(total)}</text>')
     parts.append(f'<text x="{cx}" y="{cy + 15}" text-anchor="middle" font-family="{FONT}" '
-                 f'font-size="10" fill="{INK_SOFT}">合计</text>')
+                 f'font-size="10" fill="{INK_SOFT}">{esc(tr(lang, "total_word"))}</text>')
     # 图例
     lx = cx + r + 46
     ly = cy - 70
@@ -382,10 +389,16 @@ def _series_by_time(ds: UsageDataset) -> Dict[int, Dict[str, float]]:
     return out
 
 
-def _ts_rows(ds: UsageDataset, key: str, series: Optional[Dict[int, Dict[str, float]]] = None) -> List[Tuple[str, float]]:
+def _ts_rows(ds: UsageDataset, key: str,
+             series: Optional[Dict[int, Dict[str, float]]] = None,
+             lang: Optional[str] = None) -> List[Tuple[str, float]]:
+    lang = lang or current_lang()
     series = series if series is not None else _series_by_time(ds)
     hourly = ds.bucket_sec == HOUR_SEC
-    fmt = "%m-%d %H时" if hourly else "%m-%d"
+    if hourly:
+        fmt = "%m-%d %H时" if lang == "zh" else "%m-%d %Hh"
+    else:
+        fmt = "%m-%d"
     rows = []
     for t in sorted(series):
         local = sec_to_local_dt(t, ds.tz_sec)
@@ -397,21 +410,30 @@ def _ts_rows(ds: UsageDataset, key: str, series: Optional[Dict[int, Dict[str, fl
 # 报告组装
 # ---------------------------------------------------------------------------
 
-def _table_html(table: ExportTable, max_rows: int = 100) -> str:
-    head = "".join(f"<th>{esc(c)}</th>" for c in table.columns)
+def _table_html(table: ExportTable, lang: str, max_rows: int = 100) -> str:
+    cols = [tr_col(lang, c) for c in table.columns]
+    head = "".join(f"<th>{esc(c)}</th>" for c in cols)
     body = []
     for row in table.rows[:max_rows]:
         cells = "".join(f"<td>{esc(row.get(c, ''))}</td>" for c in table.columns)
         body.append(f"<tr>{cells}</tr>")
     if len(table.rows) > max_rows:
-        body.append(f'<tr><td colspan="{len(table.columns)}" class="note">'
-                    f'仅显示前 {max_rows} 行，共 {len(table.rows)} 行…</td></tr>')
+        body.append(f'<tr><td colspan="{len(cols)}" class="note">'
+                    f'{esc(tr(lang, "table_truncated", shown=max_rows, total=len(table.rows)))}</td></tr>')
     return f'<table><thead><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody></table>'
+
+
+_TABLE_TITLES = {
+    "daily_summary": "table_daily_summary",
+    "model_summary": "table_model_summary",
+    "api_key_summary": "table_key_summary",
+}
 
 
 def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str, Any],
                   meta: Optional[Dict[str, Any]] = None,
-                  title: str = "DeepSeek 用量日报") -> str:
+                  title: Optional[str] = None, lang: Optional[str] = None) -> str:
+    lang = lang or current_lang()
     meta = meta or {}
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     start_label = meta.get("start_date", "")
@@ -419,15 +441,17 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
     tz_label = meta.get("timezone", "")
     granularity = totals.get("granularity", ds.granularity())
     hourly = ds.bucket_sec == HOUR_SEC
+    title = title or tr(lang, "report_title")
+    html_lang = "zh-CN" if lang == "zh" else "en"
 
     # ---- 数据准备 ----
     series_by_t = _series_by_time(ds)
-    cost_rows = _ts_rows(ds, "cost", series_by_t)
-    token_rows = _ts_rows(ds, "tokens", series_by_t)
+    cost_rows = _ts_rows(ds, "cost", series_by_t, lang)
+    token_rows = _ts_rows(ds, "tokens", series_by_t, lang)
     stacked = []
     for t in sorted(series_by_t):
         s = series_by_t[t]
-        stacked.append((_ts_label(ds, t), s["hit"], s["miss"], s["response"]))
+        stacked.append((_ts_label(ds, t, lang), s["hit"], s["miss"], s["response"]))
     # 模型/Key 汇总（费用）
     model_t = next((t for t in tables if t.name == "model_summary"), None)
     key_t = next((t for t in tables if t.name == "api_key_summary"), None)
@@ -437,44 +461,43 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
 
     # ---- 头版数据（完整数字显示，不缩写）----
     stats = [
-        ("总请求数", _fmt_full(float(totals.get("requests", 0))), "REQUEST"),
-        ("Token 合计", _fmt_full(float(totals.get("total_tokens", 0))), "TOKENS"),
-        ("费用合计", _fmt_full(float(totals.get("cost", 0))), "COST"),
-        ("缓存命中", _fmt_full(float(totals.get("cache_hit", 0))), "HIT"),
+        (tr(lang, "stat_requests"), _fmt_full(float(totals.get("requests", 0))), "REQUEST"),
+        (tr(lang, "stat_tokens"), _fmt_full(float(totals.get("total_tokens", 0))), "TOKENS"),
+        (tr(lang, "stat_cost"), _fmt_full(float(totals.get("cost", 0))), "COST"),
+        (tr(lang, "stat_cache_hit"), _fmt_full(float(totals.get("cache_hit", 0))), "HIT"),
     ]
 
     charts: List[str] = []
     if cost_rows and any(v > 0 for _, v in cost_rows):
-        charts.append(f'<div class="fig">{chart_bar(cost_rows, "每日费用（主要货币合计）", "费用")}</div>')
+        charts.append(f'<div class="fig">{chart_bar(cost_rows, tr(lang, "chart_daily_cost"), tr(lang, "cost_total"))}</div>')
     if stacked and any(a + b + c > 0 for _, a, b, c in stacked):
-        charts.append(f'<div class="fig">{chart_stacked(stacked, "每日 Token 构成（缓存命中 / 未命中 / 输出）")}</div>')
+        charts.append(f'<div class="fig">{chart_stacked(stacked, tr(lang, "chart_daily_tokens"), lang=lang)}</div>')
     if hourly and token_rows:
-        charts.append(f'<div class="fig">{chart_line(token_rows, "小时 Token 走势", "Token")}</div>')
+        charts.append(f'<div class="fig">{chart_line(token_rows, tr(lang, "chart_hourly_tokens"), "Token")}</div>')
     if model_items:
-        charts.append(f'<div class="fig">{chart_donut(model_items, "模型费用占比")}</div>')
+        charts.append(f'<div class="fig">{chart_donut(model_items, tr(lang, "chart_model_share"), lang=lang)}</div>')
     if key_items:
-        charts.append(f'<div class="fig">{chart_hbar(key_items, "API Key 费用排名")}</div>')
+        charts.append(f'<div class="fig">{chart_hbar(key_items, tr(lang, "chart_key_rank"))}</div>')
 
     # ---- 数据表 ----
     tables_html = []
-    if daily_t:
-        tables_html.append(f'<h3 class="sec">每日汇总</h3>{_table_html(daily_t)}')
-    if model_t:
-        tables_html.append(f'<h3 class="sec">模型汇总</h3>{_table_html(model_t)}')
-    if key_t:
-        tables_html.append(f'<h3 class="sec">API Key 汇总</h3>{_table_html(key_t)}')
+    for t in (daily_t, model_t, key_t):
+        if t:
+            tkey = _TABLE_TITLES.get(t.name)
+            ttitle = tr(lang, tkey) if tkey else t.title
+            tables_html.append(f'<h3 class="sec">{esc(ttitle)}</h3>{_table_html(t, lang)}')
 
     # ---- 报头 ----
     masthead = f"""
     <header class="masthead">
       <div class="masthead-top">
-        <span>第 {meta.get('edition', '1')} 期 · 数据刊</span>
-        <span>{now}</span>
+        <span>{esc(tr(lang, "report_edition", n=meta.get("edition", "1")))}</span>
+        <span>{esc(now)}</span>
       </div>
       <h1 class="paper-title">{esc(title)}</h1>
       <div class="dateline">
-        <span>刊期范围：{esc(start_label)} 至 {esc(end_label)}</span>
-        <span>时区 {esc(tz_label)} · 粒度 {esc("小时" if hourly else "天")}</span>
+        <span>{esc(tr(lang, "report_issue_range"))}{esc(start_label)} 〜 {esc(end_label)}</span>
+        <span>{esc(tr(lang, "timezone"))} {esc(tz_label)} · {esc(tr(lang, "granularity"))} {esc(tr(lang, "report_granularity_hourly" if hourly else "report_granularity_daily"))}</span>
       </div>
     </header>
     """
@@ -486,7 +509,7 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
 
     body = f"""
     <!DOCTYPE html>
-    <html lang="zh-CN">
+    <html lang="{html_lang}">
     <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -567,18 +590,16 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
     <body>
     <div class="sheet">
       {masthead}
-      <h2 class="sec">头版数据</h2>
+      <h2 class="sec">{esc(tr(lang, "report_front_page"))}</h2>
       {stats_html}
       <hr class="paper-rule">
-      <h2 class="sec">数据图表</h2>
-      {''.join(charts) or '<p class="note">本期无可用绘图数据。</p>'}
+      <h2 class="sec">{esc(tr(lang, "report_charts"))}</h2>
+      {''.join(charts) or f'<p class="note">{esc(tr(lang, "no_chart_data"))}</p>'}
       <hr class="paper-rule">
-      <h2 class="sec">数据表</h2>
-      {''.join(tables_html) or '<p class="note">本期无可用表格数据。</p>'}
+      <h2 class="sec">{esc(tr(lang, "report_tables"))}</h2>
+      {''.join(tables_html) or f'<p class="note">{esc(tr(lang, "no_table_data"))}</p>'}
       <div class="footer">
-        数据来源：platform.deepseek.com 用量接口（内部 API）· 生成工具 ds-usage-export {meta.get('version', '')} ·
-        生成时间 {now}<br>
-        本刊数据仅供个人用量归档与分析，请勿外传；费用为平台记账口径合计，可能与账单存在尾差。
+        {esc(tr(lang, "report_footer", ver=meta.get("version", ""), now=now))}
       </div>
     </div>
     </body>
@@ -587,15 +608,18 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
     return body
 
 
-def _ts_label(ds: UsageDataset, t: int) -> str:
+def _ts_label(ds: UsageDataset, t: int, lang: Optional[str] = None) -> str:
+    lang = lang or current_lang()
     local = sec_to_local_dt(t, ds.tz_sec)
-    return local.strftime("%m-%d %H时" if ds.bucket_sec == HOUR_SEC else "%m-%d")
+    if ds.bucket_sec == HOUR_SEC:
+        return local.strftime("%m-%d %H时" if lang == "zh" else "%m-%d %Hh")
+    return local.strftime("%m-%d")
 
 
 def build_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str, Any],
                  out_path: Path, meta: Optional[Dict[str, Any]] = None,
-                 title: str = "DeepSeek 用量日报") -> Path:
+                 title: Optional[str] = None, lang: Optional[str] = None) -> Path:
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    html_text = render_report(ds, tables, totals, meta, title=title)
+    html_text = render_report(ds, tables, totals, meta, title=title, lang=lang)
     out_path.write_text(html_text, encoding="utf-8")
     return out_path

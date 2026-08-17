@@ -12,19 +12,21 @@ from typing import List, Optional
 from . import __version__
 from .api import (ApiError, AuthError, DeepSeekPlatformClient, parse_tz,
                   tz_label)
-from .config import (clear_token, load_token, prompt_token_interactive,
-                     save_token)
+from .config import (clear_token, load_config, load_token,
+                     prompt_token_interactive, save_token)
+from .i18n import current_lang, detect_lang, set_lang, tr
 from .service import Service
 
-EPILOG = """示例:
-  dsu login                          # 交互式保存 userToken
-  dsu check                          # 校验 Token 并显示账户余额
-  dsu keys                           # 列出 API Key（trackingId / 名称）
-  dsu day --date 2026-07-01          # 单日小时级用量（Excel+CSV+报纸风HTML报告）
-  dsu go --start 2026-06-01 --end 2026-06-30           # 一键：全部格式+官方原始+自动打开报告
-  dsu go --start 2026-01-01 --end 2026-12-31 --granularity daily   # 全年一键
+EPILOG = """Examples / 示例:
+  dsu login                          # save userToken
+  dsu check                          # verify token & show balance
+  dsu keys                           # list API keys (trackingId / name)
+  dsu day --date 2026-07-01          # single-day hourly usage (xlsx+csv+html)
+  dsu go --start 2026-06-01 --end 2026-06-30           # one-click export + open report
+  dsu go --start 2026-01-01 --end 2026-12-31 --granularity daily   # full year
   dsu range --start 2026-06-01 --end 2026-06-30 --granularity hourly --open
-  dsu serve --port 8321              # 启动本地 Web 界面
+  dsu serve --port 8321              # start local web UI
+  dsu --lang en ...                  # force English interface
 """
 
 
@@ -37,7 +39,7 @@ def _parse_date(s: str) -> date:
     try:
         return date.fromisoformat(s)
     except ValueError:
-        raise argparse.ArgumentTypeError(f"日期格式应为 YYYY-MM-DD: {s!r}")
+        raise argparse.ArgumentTypeError(f"Invalid date, expected YYYY-MM-DD: {s!r}")
 
 
 def cmd_login(args) -> int:
@@ -45,16 +47,16 @@ def cmd_login(args) -> int:
     if not token:
         token = prompt_token_interactive()
     if not token:
-        print("未输入 Token，已取消。", file=sys.stderr)
+        print(tr(current_lang(), "token_cancel"), file=sys.stderr)
         return 1
     client = DeepSeekPlatformClient(token)
     try:
         summary = client.check()
     except AuthError as e:
-        print(f"Token 校验失败：{e}", file=sys.stderr)
+        print(f"{tr(current_lang(), 'auth_failed')}{e}", file=sys.stderr)
         return 1
     save_token(token, {"saved_at": datetime.now().isoformat(timespec="seconds")})
-    print("Token 已保存到", _cfg_path())
+    print(tr(current_lang(), "token_saved"), _cfg_path())
     print_summary(summary)
     return 0
 
@@ -64,26 +66,27 @@ def cmd_check(args) -> int:
     try:
         summary = client.check()
     except AuthError as e:
-        print(f"校验失败：{e}", file=sys.stderr)
-        print("请重新登录：dsu login", file=sys.stderr)
+        print(f"{tr(current_lang(), 'auth_failed')}{e}", file=sys.stderr)
+        print(tr(current_lang(), "login_again"), file=sys.stderr)
         return 1
-    print("Token 有效 ✓")
+    print(tr(current_lang(), "token_valid"))
     print_summary(summary)
     return 0
 
 
 def print_summary(summary) -> None:
     """打印用户摘要（余额、本月用量）。"""
+    lang = current_lang()
     biz = summary if isinstance(summary, dict) else {}
     if isinstance(biz, dict) and "normal_wallets" in biz:
         for w in biz.get("normal_wallets", []):
-            print(f"  余额[{w.get('currency')}]: {w.get('balance')}")
+            print(f"  {tr(lang, 'balance')}[{w.get('currency')}]: {w.get('balance')}")
         for w in biz.get("bonus_wallets", []):
-            print(f"  赠送余额[{w.get('currency')}]: {w.get('balance')}")
+            print(f"  {tr(lang, 'bonus_balance')}[{w.get('currency')}]: {w.get('balance')}")
         if biz.get("monthly_token_usage") is not None:
-            print(f"  本月 Token 用量: {biz.get('monthly_token_usage')}")
+            print(f"  {tr(lang, 'monthly_tokens')}: {biz.get('monthly_token_usage')}")
         for c in biz.get("monthly_costs", []):
-            print(f"  本月费用[{c.get('currency')}]: {c.get('amount')}")
+            print(f"  {tr(lang, 'monthly_cost')}[{c.get('currency')}]: {c.get('amount')}")
     else:
         print("  ", json.dumps(biz, ensure_ascii=False)[:400])
 
@@ -93,21 +96,23 @@ def cmd_keys(args) -> int:
     try:
         keys = client.get_api_keys()
     except AuthError as e:
-        print(f"校验失败：{e}", file=sys.stderr)
+        print(f"{tr(current_lang(), 'auth_failed')}{e}", file=sys.stderr)
         return 1
     if not keys:
-        print("未找到 API Key。")
+        print(tr(current_lang(), "no_api_keys"))
         return 0
-    print(f"{'trackingId':<40} {'名称':<24} 敏感ID")
+    name_h = "名称" if current_lang() == "zh" else "Name"
+    print(f"{'trackingId':<40} {name_h:<24} 敏感ID/SensitiveID")
     for k in keys:
         print(f"{k.get('trackingId') or '':<40} {(k.get('name') or '')[:24]:<24} {k.get('sensitiveId') or ''}")
-    print(f"\n共 {len(keys)} 个 API Key。")
+    print(f"\n{tr(current_lang(), 'keys_count', n=len(keys))}")
     return 0
 
 
 def _run_query(args) -> int:
     client = _client(args)
     svc = Service(client)
+    lang = current_lang()
     start = args.start
     end = args.end
     tz_sec = parse_tz(args.tz)
@@ -127,20 +132,21 @@ def _run_query(args) -> int:
             progress=lambda m: print("  ·", m, file=sys.stderr),
         )
     except AuthError as e:
-        print(f"认证失败：{e}", file=sys.stderr)
+        print(f"{tr(lang, 'auth_failed')}{e}", file=sys.stderr)
         return 1
     except ApiError as e:
-        print(f"获取失败：{e}", file=sys.stderr)
+        print(f"{tr(lang, 'fetch_failed')}{e}", file=sys.stderr)
         return 1
 
     totals = result["totals"]
     if args.granularity == "hourly" and totals["granularity"] != "hourly":
-        print("  ⚠ 请求小时级，但平台对所选范围返回了天级粒度（可能该时段无小时数据）。", file=sys.stderr)
-    print(f"\n导出完成 → {result['out_dir']}")
-    print(f"  周期: {start} ~ {end}  时区: {tz_label(tz_sec)}  粒度: {totals['granularity']}")
-    print(f"  请求数: {totals['requests']:,}  缓存命中: {totals['cache_hit']:,}  "
-          f"缓存未命中: {totals['cache_miss']:,}  输出: {totals['response']:,}")
-    print(f"  Token 合计: {totals['total_tokens']:,}  费用合计: {totals['cost']:.6f}")
+        print(tr(lang, "warn_granularity"), file=sys.stderr)
+    print(f"\n{tr(lang, 'export_done')} {result['out_dir']}")
+    print(f"  {tr(lang, 'period')}: {start} ~ {end}  {tr(lang, 'timezone')}: {tz_label(tz_sec)}  "
+          f"{tr(lang, 'granularity')}: {totals['granularity']}")
+    print(f"  {tr(lang, 'requests')}: {totals['requests']:,}  {tr(lang, 'cache_hit')}: {totals['cache_hit']:,}  "
+          f"{tr(lang, 'cache_miss')}: {totals['cache_miss']:,}  {tr(lang, 'output')}: {totals['response']:,}")
+    print(f"  {tr(lang, 'tokens_total')}: {totals['total_tokens']:,}  {tr(lang, 'cost_total')}: {totals['cost']:.6f}")
     for cat in ("xlsx", "csv", "html", "raw", "meta"):
         if result["files"].get(cat):
             for f in result["files"][cat]:
@@ -148,7 +154,7 @@ def _run_query(args) -> int:
     if getattr(args, "open", False) and "html" in result["files"]:
         import webbrowser
         report = str(Path(result["out_dir"]) / result["files"]["html"][0])
-        print(f"  正在打开报告: {report}")
+        print(f"  {tr(lang, 'opening_report')} {report}")
         webbrowser.open("file:///" + report.replace("\\", "/").replace(" ", "%20"))
     return 0
 
@@ -172,9 +178,17 @@ def cmd_serve(args) -> int:
     try:
         from .webapp import run_server
     except ImportError as e:
-        print(f"Web 界面需要 flask：pip install -r requirements.txt（{e}）", file=sys.stderr)
+        print(tr(current_lang(), "web_needs_flask", e=e), file=sys.stderr)
         return 1
     return run_server(args.host, args.port, debug=args.debug)
+
+
+def cmd_logout(args) -> int:
+    if clear_token():
+        print(tr(current_lang(), "token_cleared"))
+    else:
+        print(tr(current_lang(), "no_saved_token"))
+    return 0
 
 
 def cmd_diagnose(args) -> int:
@@ -182,18 +196,19 @@ def cmd_diagnose(args) -> int:
     import json as _json
     from pathlib import Path as _Path
     from .api import start_end_sec, tz_label
+    from .i18n import current_lang as _cur, tr as _tr
 
     client = _client(args)
     out_dir = _Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     tz_sec = parse_tz(args.tz)
     s0, e0 = start_end_sec(args.date, args.date, tz_sec)
-    print(f"请求: amount/cost, 窗口 {args.date} (UTC秒 {s0}~{e0}, tz {tz_label(tz_sec)})")
+    print(_tr(_cur(), "diagnose_title", d=args.date, s=s0, e=e0, tz=tz_label(tz_sec)))
     try:
         amount_biz = client.get_usage_amount(s0, e0, tz_sec)
         cost_biz = client.get_usage_cost(s0, e0, tz_sec)
     except ApiError as e:
-        print(f"请求失败：{e}", file=sys.stderr)
+        print(f"{_tr(_cur(), 'fetch_failed')}{e}", file=sys.stderr)
         return 1
 
     def _shape(obj, prefix=""):
@@ -215,9 +230,9 @@ def cmd_diagnose(args) -> int:
     for name, biz in (("amount", amount_biz), ("cost", cost_biz)):
         path = out_dir / f"diagnose_{name}_{args.date}.json"
         path.write_text(_json.dumps(biz, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"\n=== {name} 结构 ===  完整响应已存: {path}")
+        print(f"\n=== {name} ===")
         _shape(biz)
-        # 提取 api_key 类型样例
+
         def _first_api_key(obj):
             if isinstance(obj, dict):
                 for s in obj.get("series") or []:
@@ -232,38 +247,31 @@ def cmd_diagnose(args) -> int:
         ak = _first_api_key(biz)
         if ak is not None:
             if isinstance(ak, dict):
-                print(f"  api_key 字段是 dict，键: {list(ak.keys())}")
+                print(f"  {_tr(_cur(), 'diagnose_api_key_dict', keys=list(ak.keys()))}")
             else:
-                print(f"  api_key 字段是 {type(ak).__name__}: {str(ak)[:60]!r}")
+                print(f"  {_tr(_cur(), 'diagnose_api_key_type', t=type(ak).__name__, v=str(ak)[:60])}")
         print(f"  bucket: {biz.get('bucket') if isinstance(biz, dict) else '?'}")
-    print(f"\n诊断文件目录: {out_dir.resolve()}")
-    print("请把该目录下 diagnose_*.json 的内容或路径发给开发者核对。")
-    return 0
-
-
-def cmd_logout(args) -> int:
-    if clear_token():
-        print("已清除本地保存的 Token。")
-    else:
-        print("未找到已保存的 Token。")
+    print(f"\n{_tr(_cur(), 'diagnose_dir')} {out_dir.resolve()}")
+    print(_tr(_cur(), "diagnose_hint"))
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="dsu",
-        description=f"DeepSeek 开放平台用量导出工具 v{__version__} "
-                    "(platform.deepseek.com/usage 数据导出)",
+        description=f"DeepSeek 用量导出工具 v{__version__} / DeepSeek Usage Export v{__version__}",
         epilog=EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument("-v", "--version", action="version", version=__version__)
+    p.add_argument("--lang", choices=["zh", "en"], default=None,
+                   help="界面语言 / interface language (默认自动检测)")
     sub = p.add_subparsers(dest="cmd")
 
     def add_common(sp):
         sp.add_argument("--token", help="直接指定 userToken（不读取已保存的配置）")
 
-    sp = sub.add_parser("login", help="保存 userToken（登录态）")
+    sp = sub.add_parser("login", help="保存 userToken（登录态）/ save userToken")
     sp.add_argument("--token", help="直接粘贴 token（否则交互输入）")
     sp.set_defaults(func=cmd_login)
 
@@ -347,13 +355,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     _setup_console()
     parser = build_parser()
     args = parser.parse_args(argv)
+    # 语言解析：--lang > 配置文件 > 环境变量/系统 locale
+    set_lang(args.lang or detect_lang(load_config().get("lang")))
     if not getattr(args, "func", None):
         parser.print_help()
         return 0
     try:
         return args.func(args) or 0
     except KeyboardInterrupt:
-        print("\n已取消。", file=sys.stderr)
+        print("\nInterrupted / 已取消。", file=sys.stderr)
         return 130
 
 

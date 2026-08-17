@@ -95,6 +95,15 @@ def create_app(exports_dir: Path = DEFAULT_EXPORTS_DIR) -> Flask:
     app = Flask(__name__)
     exports_dir.mkdir(parents=True, exist_ok=True)
 
+    from werkzeug.exceptions import HTTPException
+
+    @app.errorhandler(HTTPException)
+    def handle_http_exception(e: HTTPException):
+        """API 路由返回 JSON 错误；其他路由交回 Flask 默认页面（不再刷堆栈）。"""
+        if request.path.startswith("/api/"):
+            return jsonify({"ok": False, "error": e.description}), e.code
+        return e
+
     @app.errorhandler(AuthError)
     def handle_auth_error(e: AuthError):
         return jsonify({"ok": False, "error": str(e)}), 401
@@ -107,7 +116,13 @@ def create_app(exports_dir: Path = DEFAULT_EXPORTS_DIR) -> Flask:
     def handle_other_error(e: Exception):
         if request.path.startswith("/api/"):
             return jsonify({"ok": False, "error": f"内部错误: {e}"}), 500
-        raise e
+        # 非 API 路径：返回简洁 500 页，避免在控制台打印堆栈
+        return "Internal Server Error", 500
+
+    @app.get("/favicon.ico")
+    def favicon():
+        # 浏览器会自动请求 favicon；返回 204 避免 404/500 刷屏
+        return "", 204
 
     def _client_from_req() -> DeepSeekPlatformClient:
         data = request.get_json(force=True, silent=True) or {}
@@ -158,10 +173,15 @@ def create_app(exports_dir: Path = DEFAULT_EXPORTS_DIR) -> Flask:
         api_key_ids = data.get("api_key_ids") or None
         ds = client.fetch_range(start, end, tz_sec, granularity, api_key_ids)
         tables = build_tables(ds)
+        from .i18n import current_lang, tr_col
+        lang = current_lang()
         preview = []
         for t in tables:
+            cols = [tr_col(lang, c) for c in t.columns]
             preview.append({"name": t.name, "title": t.title,
-                            "columns": t.columns, "rows": t.rows[:100]})
+                            "columns": cols,
+                            "rows": [{col: r.get(old, "") for old, col in zip(t.columns, cols)}
+                                     for r in t.rows[:100]]})
         return jsonify({"ok": True,
                         "totals": compute_totals(ds),
                         "granularity": ds.granularity(),
@@ -265,9 +285,11 @@ def create_app(exports_dir: Path = DEFAULT_EXPORTS_DIR) -> Flask:
 
 
 def run_server(host: str = "127.0.0.1", port: int = 8321, debug: bool = False) -> int:
+    from .i18n import current_lang, tr
     app = create_app()
-    print(f"DeepSeek 用量导出工具 v{__version__} Web 界面")
-    print(f"  地址: http://{host}:{port}")
-    print(f"  提示: 仅本机可访问；Token 仅在浏览器→本机间传递，请勿公网暴露端口。")
+    lang = current_lang()
+    print(f"{tr(lang, 'web_banner', ver=__version__)}")
+    print(f"  {tr(lang, 'web_addr')} http://{host}:{port}")
+    print(f"  {tr(lang, 'web_hint')}")
     app.run(host=host, port=port, debug=debug, threaded=True)
     return 0

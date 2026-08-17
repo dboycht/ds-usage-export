@@ -1,4 +1,6 @@
-# ds-usage-export（DeepSeek 用量导出工具）v1.0.3
+# ds-usage-export（DeepSeek 用量导出工具）v1.0.4
+
+> **English**: [README.en.md](README.en.md)
 
 解决 DeepSeek 开放平台用量后台（https://platform.deepseek.com/usage）的两个痛点：
 
@@ -25,6 +27,7 @@
 | 导出格式 | Excel（多工作表）、CSV（utf-8-sig）、HTML 图表报告、meta.json |
 | API Key 筛选 | 按 trackingId 过滤指定 Key |
 | 命令行 + Web | `dsu` 子命令与本地 Web 界面（报纸编辑风，http://127.0.0.1:8321）双入口 |
+| 多语言 | 中文（默认）/ English：CLI、HTML 报告、Web 界面均支持；自动检测或 `--lang zh\|en` |
 | 容错 | 429/5xx 自动退避重试；Token 失效明确提示；`dsu diagnose` 排查平台数据结构 |
 
 ## 快速开始
@@ -63,6 +66,7 @@ dsu login --token <粘贴的token>
 ```bash
 dsu check                  # 校验 Token，显示余额
 dsu keys                   # 列出 API Key（trackingId / 名称）
+dsu --lang en ...          # 强制英文界面（默认自动检测）
 
 # ⭐ 一键导出：Excel+CSV+报纸风HTML报告+官方原始数据，并自动打开报告
 dsu go --start 2026-06-01 --end 2026-06-30
@@ -91,7 +95,7 @@ dsu serve                 # 默认 http://127.0.0.1:8321
 dsu serve --port 9000 --host 127.0.0.1
 ```
 
-页面内可：粘贴/验证 Token → 选择日期范围与粒度 → 获取预览 → 一键导出（含 HTML 图表报告）→ 下载文件 / 查看历史导出。
+页面内可：粘贴/验证 Token → 选择日期范围与粒度 → 获取预览 → 一键导出（含 HTML 图表报告）→ 下载文件 / 查看历史导出。报头右上角 **EN / 中文** 按钮可切换界面语言。
 
 ### 5. Windows 双击启动（免命令行）
 
@@ -127,15 +131,20 @@ ds-usage-export/
 ├── dsu.py                # 入口脚本（python dsu.py …）
 ├── pyproject.toml        # 打包与 dsu 命令
 ├── requirements.txt
+├── 启动Web界面.bat        # Windows 双击启动 Web 界面
+├── 一键导出.bat           # Windows 双击一键导出
+├── README.md             # 中文文档
+├── README.en.md          # English docs
 ├── dsusage/
 │   ├── api.py            # 平台客户端：by_api_key amount/cost、usage/export zip、summary、keys
+│   ├── i18n.py           # 多语言（zh/en）
 │   ├── parsing.py        # 官方导出 CSV 解析（表头自适应）
 │   ├── aggregate.py      # 建表（小时/每日/模型/Key/费用）
 │   ├── exporters.py      # xlsx / csv / raw / meta 写出
 │   ├── service.py        # 编排：分片抓取、官方原始合并、导出
 │   ├── cli.py            # 命令行
 │   ├── webapp.py         # Flask Web 界面（报纸编辑风）
-│   ├── report.py         # 报纸风 HTML 图表报告生成器（内联 SVG）
+│   ├── report.py         # 报纸风 HTML 图表报告生成器（内联 SVG + 悬停提示 + 动效）
 │   └── web/static/index.html
 ├── examples/report_demo.html   # 合成数据生成的示例报告
 ├── tests/                # 单元测试（合成数据，无需真实 Token）
@@ -162,7 +171,9 @@ python -m unittest discover -s tests -v
 
 ## 版本历史
 
-- **v1.0.3**（当前）：完整数字显示（不缩写）、图表悬停提示、报带动效；版本 tag 1.0.3。
+- **v1.0.4**（当前）：多语言（中文/English，CLI + HTML 报告 + Web 界面）；修复 Web 服务
+  favicon/404 错误刷屏；版本 tag 1.0.4。
+- **v1.0.3**：完整数字显示（不缩写）、图表悬停提示、报带动效；版本 tag 1.0.3。
 - **v1.0.2**：一键导出 `dsu go`、报纸编辑风 HTML 图表报告、Web 界面报纸风改版、
   `api_key` 对象结构兼容修复。详见 [CHANGELOG.md](CHANGELOG.md)。
 - **v1.0.1**：首版：登录态复用、小时/日/多维度查询、CSV/Excel/官方原始导出、

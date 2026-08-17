@@ -270,7 +270,7 @@ class TestExporters(unittest.TestCase):
 
 class TestCli(unittest.TestCase):
     def test_version(self):
-        self.assertEqual(__version__, "1.0.3")
+        self.assertEqual(__version__, "1.0.4")
 
     def test_parser_builds(self):
         from dsusage.cli import build_parser

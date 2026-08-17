@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import requests
 
 from . import __version__
+from .i18n import current_lang, tr
 
 API_BASE = "https://platform.deepseek.com/api/v0"
 EXPORT_PATH = "/usage/export"
@@ -180,7 +181,7 @@ class DeepSeekPlatformClient:
     def __init__(self, token: str, timeout: float = 30.0, retries: int = 4,
                  user_agent: str = DEFAULT_UA, verify: bool = True):
         if not token or not token.strip():
-            raise AuthError("Token 为空，请先登录：dsu login")
+            raise AuthError(tr(current_lang(), "token_empty"))
         self.token = token.strip()
         self.timeout = timeout
         self.retries = max(1, retries)
@@ -209,12 +210,9 @@ class DeepSeekPlatformClient:
                 resp = self._session.get(url, params=params, headers=headers,
                                          timeout=self.timeout, verify=self.verify)
                 if resp.status_code == 401:
-                    raise AuthError(
-                        "Token 无效或已过期，请重新登录 platform.deepseek.com 后获取新的 userToken "
-                        "(dsu login)"
-                    )
+                    raise AuthError(tr(current_lang(), "token_invalid"))
                 if resp.status_code == 429:
-                    raise RateLimitError("请求过于频繁 (HTTP 429)，请稍后再试")
+                    raise RateLimitError(tr(current_lang(), "rate_limited"))
                 if resp.status_code >= 500:
                     raise ApiError(f"平台服务异常 (HTTP {resp.status_code})")
                 if resp.status_code != 200:
@@ -246,7 +244,7 @@ class DeepSeekPlatformClient:
         code = body.get("code")
         msg = str(body.get("msg") or "")
         if code in (40003,) or "authorization failed" in msg.lower() or "invalid token" in msg.lower():
-            raise AuthError("Token 无效或已过期，请重新登录 platform.deepseek.com 后获取新的 userToken (dsu login)")
+            raise AuthError(tr(current_lang(), "token_invalid"))
         if code not in (0, None):
             raise ApiError(f"平台返回错误 code={code} msg={msg}")
         data = body.get("data") or {}

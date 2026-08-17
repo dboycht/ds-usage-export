@@ -142,10 +142,12 @@ class Service:
 
         if "html" in formats:
             from .report import build_report
+            from .i18n import current_lang
             if progress:
                 progress("排版报纸风 HTML 图表报告")
             report_path = build_report(ds, tables, totals,
-                                       out_path=out_dir / "report.html", meta=meta)
+                                       out_path=out_dir / "report.html",
+                                       meta=meta, lang=current_lang())
             files.setdefault("html", []).append(report_path.name)
 
         return {

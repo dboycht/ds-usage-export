@@ -113,6 +113,21 @@ class TestWebApp(unittest.TestCase):
         self.assertEqual(j["totals"]["requests"], 3)
         self.assertGreater(len(j["tables"]), 0)
 
+    def test_fetch_english_columns(self):
+        from dsusage.i18n import current_lang, set_lang
+        old = current_lang()
+        try:
+            set_lang("en")
+            r = self._post("/api/fetch", {"token": "t", "start": "2026-07-01", "end": "2026-07-02",
+                                          "tz": "28800", "granularity": "daily"})
+        finally:
+            set_lang(old)
+        j = r.get_json()
+        self.assertTrue(j["ok"])
+        first = j["tables"][0]
+        self.assertIn("Date", first["columns"])
+        self.assertNotIn("日期", first["columns"])
+
     def test_export_job(self):
         r = self._post("/api/export", {"token": "t", "start": "2026-07-01", "end": "2026-07-02",
                                        "tz": "28800", "granularity": "daily",

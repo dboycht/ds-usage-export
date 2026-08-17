@@ -1,0 +1,130 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DeepSeek Usage Daily · 2026-07-27 至 2026-07-27</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #efe7d3; color: #191813;
+             font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif; }
+      .sheet { max-width: 980px; margin: 22px auto; background: #f7f2e4;
+               border: 1px solid #191813; box-shadow: 6px 8px 0 rgba(25,24,19,.14);
+               padding: 26px 34px 18px; }
+      .masthead { text-align: center; border-bottom: 3px double #191813;
+                  padding-bottom: 10px; margin-bottom: 18px; }
+      .masthead-top { display: flex; justify-content: space-between;
+                      font-size: 11px; letter-spacing: 2px; color: #4a463c;
+                      border-top: 2px solid #191813; border-bottom: 1px solid #191813;
+                      padding: 3px 2px; margin-bottom: 10px; }
+      .paper-title { margin: 0; font-size: 40px; letter-spacing: 8px; font-weight: 900;
+                      font-family: Georgia, 'Times New Roman', 'Songti SC', serif; }
+      .dateline { display: flex; justify-content: space-between; font-size: 12px;
+                   color: #4a463c; margin-top: 6px; }
+      h2.sec { font-size: 17px; margin: 22px 0 8px; padding-left: 10px;
+                border-left: 5px solid #a33b2e; letter-spacing: 2px; }
+      h3.sec { font-size: 14px; margin: 20px 0 6px; border-bottom: 1px solid #191813;
+                padding-bottom: 3px; letter-spacing: 1px; }
+      .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+                gap: 10px; margin: 16px 0 6px; }
+      .stat { border: 1px solid #191813; padding: 10px 12px 8px; position: relative;
+               background: #f7f2e4; }
+      .stat-k { font-size: 12px; color: #4a463c; letter-spacing: 1px; }
+      .stat-v { font-size: clamp(15px, 1.9vw, 24px); font-weight: 900; font-family: Georgia, serif;
+                 margin: 2px 0; line-height: 1.15; white-space: nowrap; overflow: hidden;
+                 text-overflow: clip; }
+      .stat-s { font-size: 9px; color: #8a8172; letter-spacing: 2px; }
+      .fig { margin: 14px 0; border: 1px solid #c9c0aa; padding: 10px; background: #f7f2e4; }
+      .fig svg { border-bottom: 1px dashed #c9c0aa; }
+      /* ---- 动效（报纸编辑部风格） ---- */
+      @keyframes dsu-press { from { opacity: 0; letter-spacing: 2px; } to { opacity: 1; letter-spacing: 8px; } }
+      @keyframes dsu-fade-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+      @keyframes dsu-grow-v { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+      @keyframes dsu-grow-h { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+      @keyframes dsu-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+      @keyframes dsu-fade-in { from { opacity: 0; } to { opacity: 0.92; } }
+      .paper-title { animation: dsu-press 1.1s ease-out both; }
+      .stats, .fig, table, h2.sec, h3.sec { animation: dsu-fade-up .55s ease-out both; }
+      .fig:nth-of-type(2) { animation-delay: .07s; }
+      .fig:nth-of-type(3) { animation-delay: .14s; }
+      .fig:nth-of-type(4) { animation-delay: .21s; }
+      .fig:nth-of-type(5) { animation-delay: .28s; }
+      .fig:nth-of-type(6) { animation-delay: .35s; }
+      svg .v-bar { transform-box: fill-box; transform-origin: bottom;
+                    animation: dsu-grow-v .7s cubic-bezier(.2,.7,.3,1) both; }
+      svg .h-bar { transform-box: fill-box; transform-origin: left;
+                    animation: dsu-grow-h .8s cubic-bezier(.2,.7,.3,1) both; }
+      svg .line-draw { stroke-dasharray: 1; animation: dsu-draw 1.3s ease-out .15s both; }
+      svg .area-fade { animation: dsu-fade-in 1s ease-out .4s both; }
+      svg .donut-seg { transform-box: fill-box; transform-origin: center;
+                        animation: dsu-fade-in .8s ease-out both; }
+      svg .pt { animation: dsu-fade-in .5s ease-out .8s both; }
+      svg .pt-hit { cursor: pointer; }
+      /* 悬停反馈 */
+      svg rect, svg path, svg circle { transition: opacity .18s ease, filter .18s ease; cursor: default; }
+      svg .v-bar:hover, svg .h-bar:hover, svg .donut-seg:hover { opacity: .68 !important; }
+      svg .pt:hover { r: 4px; opacity: 1; }
+      .fig:hover { box-shadow: inset 0 0 0 2px #a33b2e; }
+      table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 8px 0 4px; }
+      th, td { border: 1px solid #4a463c; padding: 5px 8px; text-align: left; }
+      th { background: #191813; color: #f7f2e4; font-weight: 600; letter-spacing: 1px; }
+      tr:nth-child(even) td { background: #efe7d3; }
+      td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+      .note { color: #8a8172; font-size: 11px; font-style: italic; }
+      .footer { margin-top: 24px; border-top: 1px solid #191813; padding-top: 8px;
+                 font-size: 11px; color: #8a8172; text-align: center;
+                 letter-spacing: 1px; line-height: 1.7; }
+      .paper-rule { border: none; border-top: 3px double #191813; margin: 14px 0; }
+    </style>
+    </head>
+    <body>
+    <div class="sheet">
+      
+    <header class="masthead">
+      <div class="masthead-top">
+        <span>Vol. 1 · Data Edition</span>
+        <span>2026-08-18 01:05</span>
+      </div>
+      <h1 class="paper-title">DeepSeek Usage Daily</h1>
+      <div class="dateline">
+        <span>Issue range: 2026-07-27 〜 2026-07-27</span>
+        <span>Timezone UTC+08:00 · Granularity hourly</span>
+      </div>
+    </header>
+    
+      <h2 class="sec">Front Page</h2>
+      <div class="stats"><div class="stat"><div class="stat-k">Total Requests</div><div class="stat-v">1,300,000,000</div><div class="stat-s">REQUEST</div></div><div class="stat"><div class="stat-k">Total Tokens</div><div class="stat-v">1,300,000,000</div><div class="stat-s">TOKENS</div></div><div class="stat"><div class="stat-k">Total Cost</div><div class="stat-v">12,345.6789</div><div class="stat-s">COST</div></div><div class="stat"><div class="stat-k">Cache Hits</div><div class="stat-v">87,654,321</div><div class="stat-s">HIT</div></div></div>
+      <hr class="paper-rule">
+      <h2 class="sec">Charts</h2>
+      <div class="fig"><svg viewBox="0 0 760 250" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:760px;height:auto;background:#f7f2e4;"><text x="52" y="18" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="15" font-weight="bold" fill="#191813">Daily Cost (primary currency)</text><text x="748" y="33" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#8a8172">Total cost</text><line x1="52" y1="214.0" x2="748" y2="214.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="218.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">0</text><line x1="52" y1="158.0" x2="748" y2="158.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="162.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">0.20</text><line x1="52" y1="102.0" x2="748" y2="102.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="106.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">0.40</text><line x1="52" y1="46.0" x2="748" y2="46.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="50.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">0.60</text><line x1="52" y1="214" x2="748" y2="214" stroke="#191813" stroke-width="1.4"/><rect class="v-bar" x="213.0" y="102.0" width="26.0" height="112.0" fill="#191813" opacity="0.92"><title>07-27 00h
+0.4（Total cost）</title></rect><text x="226.0" y="98.0" text-anchor="middle" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="9" fill="#191813">0.40</text><text x="62.0" y="232" text-anchor="start" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="9.5" fill="#4a463c">07-27 00h</text><rect class="v-bar" x="561.0" y="208.4" width="26.0" height="5.6" fill="#a33b2e" opacity="0.92"><title>07-27 01h
+0.02（Total cost）</title></rect><text x="744.0" y="232" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="9.5" fill="#4a463c">07-27 01h</text></svg></div><div class="fig"><svg viewBox="0 0 760 288" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:760px;height:auto;background:#f7f2e4;"><text x="52" y="18" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="15" font-weight="bold" fill="#191813">Daily Token Composition (cache hit / miss / output)</text><line x1="52" y1="230.0" x2="748" y2="230.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="234.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">0</text><line x1="52" y1="168.7" x2="748" y2="168.7" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="172.7" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">200</text><line x1="52" y1="107.3" x2="748" y2="107.3" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="111.3" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">400</text><line x1="52" y1="46.0" x2="748" y2="46.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="50.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">600</text><line x1="52" y1="230" x2="748" y2="230" stroke="#191813" stroke-width="1.4"/><rect class="v-bar" x="213.0" y="196.3" width="26.0" height="33.7" fill="#191813" opacity="0.94"><title>07-27 00h · Output 110
+Cache hit 100 · Cache miss 250 · Output 110
+Total tokens 460</title></rect><rect class="v-bar" x="213.0" y="119.6" width="26.0" height="76.7" fill="#9a917d" opacity="0.94"><title>07-27 00h · Cache miss 250
+Cache hit 100 · Cache miss 250 · Output 110
+Total tokens 460</title></rect><rect class="v-bar" x="213.0" y="88.9" width="26.0" height="30.7" fill="#c9c0aa" opacity="0.94"><title>07-27 00h · Cache hit 100
+Cache hit 100 · Cache miss 250 · Output 110
+Total tokens 460</title></rect><text x="62.0" y="248" text-anchor="start" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="9.5" fill="#4a463c">07-27 00h</text><rect class="v-bar" x="561.0" y="223.9" width="26.0" height="6.1" fill="#191813" opacity="0.94"><title>07-27 01h · Output 20
+Cache hit 0 · Cache miss 0 · Output 20
+Total tokens 20</title></rect><text x="744.0" y="248" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="9.5" fill="#4a463c">07-27 01h</text><g font-family='Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif' font-size='10' fill='#4a463c'><rect x="72" y="262" width="10" height="10" fill="#c9c0aa"/><text x="86" y="271">Cache hit</text><rect x="222" y="262" width="10" height="10" fill="#9a917d"/><text x="236" y="271">Cache miss</text><rect x="372" y="262" width="10" height="10" fill="#191813"/><text x="386" y="271">Output</text></g></svg></div><div class="fig"><svg viewBox="0 0 760 250" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:760px;height:auto;background:#f7f2e4;"><text x="52" y="18" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="15" font-weight="bold" fill="#191813">Hourly Token Trend</text><text x="748" y="33" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#8a8172">Token</text><line x1="52" y1="214.0" x2="748" y2="214.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="218.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">0</text><line x1="52" y1="158.0" x2="748" y2="158.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="162.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">200</text><line x1="52" y1="102.0" x2="748" y2="102.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="106.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">400</text><line x1="52" y1="46.0" x2="748" y2="46.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="50.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">600</text><line x1="52" y1="214" x2="748" y2="214" stroke="#191813" stroke-width="1.4"/><polygon class="area-fade" points="M 52.0,214 L 52.0,85.2 L 748.0,208.4 L 748.0,214 Z" fill="#1f4e79" opacity="0.10"/><polyline class="line-draw" pathLength="1" points="52.0,85.2 748.0,208.4" fill="none" stroke="#1f4e79" stroke-width="2"/><circle class="pt" cx="52.0" cy="85.2" r="2.4" fill="#191813"><title>07-27 00h
+460</title></circle><circle class="pt-hit" cx="52.0" cy="85.2" r="13" fill="transparent"><title>07-27 00h
+460</title></circle><circle class="pt" cx="748.0" cy="208.4" r="2.4" fill="#191813"><title>07-27 01h
+20</title></circle><circle class="pt-hit" cx="748.0" cy="208.4" r="13" fill="transparent"><title>07-27 01h
+20</title></circle><text x="62.0" y="232" text-anchor="start" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="9.5" fill="#4a463c">07-27 00h</text><text x="744.0" y="232" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="9.5" fill="#4a463c">07-27 01h</text></svg></div><div class="fig"><svg viewBox="0 0 760 300" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:760px;height:auto;background:#f7f2e4;"><text x="20" y="24" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="15" font-weight="bold" fill="#191813">Model Cost Share</text><path class="donut-seg" d="M 200,150 L 200.0,54.0 A 96,96 0 0 1 293.6,171.4 Z" fill="#191813" opacity="0.92" stroke="#f7f2e4" stroke-width="1.5"><title>deepseek-chat
+0.12（28.6%）</title></path><path class="donut-seg" d="M 200,150 L 293.6,171.4 A 96,96 0 1 1 200.0,54.0 Z" fill="#a33b2e" opacity="0.92" stroke="#f7f2e4" stroke-width="1.5"><title>deepseek-reasoner
+0.3（71.4%）</title></path><circle cx="200" cy="150" r="34" fill="#f7f2e4" stroke="#191813" stroke-width="1.2"/><text x="200" y="146" text-anchor="middle" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="19" font-weight="bold" fill="#191813">0.42</text><text x="200" y="165" text-anchor="middle" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#4a463c">Total</text><rect x="342" y="80" width="11" height="11" fill="#191813"><title>deepseek-chat
+0.12（28.6%）</title></rect><text x="359" y="90" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#191813">deepseek-chat</text><text x="572" y="90" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#4a463c" text-anchor="end">28.6%</text><rect x="342" y="100" width="11" height="11" fill="#a33b2e"><title>deepseek-reasoner
+0.3（71.4%）</title></rect><text x="359" y="110" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#191813">deepseek-reasoner</text><text x="572" y="110" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#4a463c" text-anchor="end">71.4%</text></svg></div><div class="fig"><svg viewBox="0 0 760 94" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:760px;height:auto;background:#f7f2e4;"><text x="20" y="20" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="15" font-weight="bold" fill="#191813">API Key Cost Ranking</text><text x="232" y="43" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#191813">KeyA</text><rect class="h-bar" x="240" y="30" width="176.0" height="15" fill="#a33b2e" opacity="0.92"><title>KeyA
+0.12</title></rect><text x="422.0" y="43" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10.5" fill="#4a463c">0.12</text><text x="232" y="67" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#191813">KeyB</text><rect class="h-bar" x="240" y="54" width="440.0" height="15" fill="#191813" opacity="0.92"><title>KeyB
+0.3</title></rect><text x="686.0" y="67" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10.5" fill="#4a463c">0.30</text></svg></div>
+      <hr class="paper-rule">
+      <h2 class="sec">Data Tables</h2>
+      <h3 class="sec">Daily Summary</h3><table><thead><tr><th>Date</th><th>Requests</th><th>Input (cache hit)</th><th>Input (cache miss)</th><th>Output</th><th>Total tokens</th><th>Cost</th></tr></thead><tbody><tr><td>2026-07-27</td><td>6</td><td>100</td><td>250</td><td>130</td><td>480</td><td>0.42</td></tr></tbody></table><h3 class="sec">Model Summary</h3><table><thead><tr><th>Model</th><th>Requests</th><th>Input (cache hit)</th><th>Input (cache miss)</th><th>Output</th><th>Total tokens</th><th>Cost</th><th>Cost %</th></tr></thead><tbody><tr><td>deepseek-chat</td><td>3</td><td>100</td><td>50</td><td>50</td><td>200</td><td>0.12</td><td>28.57</td></tr><tr><td>deepseek-reasoner</td><td>3</td><td>0</td><td>200</td><td>80</td><td>280</td><td>0.3</td><td>71.43</td></tr></tbody></table><h3 class="sec">API Key Summary</h3><table><thead><tr><th>API Key</th><th>Requests</th><th>Input (cache hit)</th><th>Input (cache miss)</th><th>Output</th><th>Total tokens</th><th>Cost</th><th>Cost %</th></tr></thead><tbody><tr><td>KeyA</td><td>3</td><td>100</td><td>50</td><td>50</td><td>200</td><td>0.12</td><td>28.57</td></tr><tr><td>KeyB</td><td>3</td><td>0</td><td>200</td><td>80</td><td>280</td><td>0.3</td><td>71.43</td></tr></tbody></table>
+      <div class="footer">
+        Source: platform.deepseek.com usage API (internal) · Tool: ds-usage-export 1.0.2 · Generated 2026-08-18 01:05&lt;br&gt;For personal usage archiving and analysis only. Cost is the platform billing total; minor rounding differences may apply.
+      </div>
+    </div>
+    </body>
+    </html>
+    

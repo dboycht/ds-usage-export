@@ -116,6 +116,21 @@ class TestReport(unittest.TestCase):
         self.assertIn("svg", html_text)
         self.assertIn("每日 Token 构成", html_text)
 
+    def test_english_report(self):
+        html_text = render_report(self.ds, self.tables, self.totals, self.meta, lang="en")
+        for token in ("DeepSeek Usage Daily", "Front Page", "Total Requests",
+                      "Total Tokens", "Total Cost", "Cache Hits",
+                      "Daily Cost", "Hourly Token Trend", "Model Cost Share",
+                      "API Key Cost Ranking", "Data Tables", "Daily Summary",
+                      "Model Summary", "API Key Summary", "Cache hit", "Cache miss",
+                      "Output", "Total", "Generated"):
+            self.assertIn(token, html_text, f"EN 缺少 {token}")
+        # 英文列名
+        self.assertIn("<th>Date</th>", html_text)
+        self.assertIn("<th>Requests</th>", html_text)
+        # 不残留中文标题
+        self.assertNotIn("头版数据", html_text)
+
     def test_go_command(self):
         from dsusage import cli
         with tempfile.TemporaryDirectory() as tmp:

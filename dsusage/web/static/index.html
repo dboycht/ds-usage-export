@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepSeek 用量导出工具</title>
+<style>
+  :root {
+    --bg: #f5f7fa; --card: #ffffff; --border: #e2e8f0; --text: #1e293b;
+    --muted: #64748b; --accent: #2563eb; --accent-soft: #eff6ff;
+    --ok: #16a34a; --warn: #d97706; --err: #dc2626;
+    --radius: 10px; --shadow: 0 1px 3px rgba(15, 23, 42, .08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; font-size: 14px; }
+  header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;
+           padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .ver { background: rgba(255,255,255,.18); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+  main { max-width: 1080px; margin: 20px auto; padding: 0 16px; display: grid; gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+          box-shadow: var(--shadow); padding: 16px 20px; }
+  .card h2 { margin: 0 0 12px; font-size: 15px; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 12px; color: var(--muted); }
+  input[type=text], input[type=date], input[type=password], select, textarea {
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+    font-size: 13px; background: #fff; color: var(--text); }
+  input:focus, select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  button { border: none; border-radius: 8px; padding: 9px 16px; font-size: 13px;
+           cursor: pointer; background: var(--accent); color: #fff; font-weight: 500; }
+  button:hover { filter: brightness(1.08); }
+  button.secondary { background: #e2e8f0; color: var(--text); }
+  button.danger { background: #fee2e2; color: var(--err); }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  .hint { color: var(--muted); font-size: 12px; }
+  .badge { display: inline-block; border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+  .badge.ok { background: #dcfce7; color: var(--ok); }
+  .badge.err { background: #fee2e2; color: var(--err); }
+  .badge.warn { background: #fef3c7; color: var(--warn); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .stat { background: var(--accent-soft); border-radius: 8px; padding: 10px 14px; }
+  .stat .k { font-size: 12px; color: var(--muted); }
+  .stat .v { font-size: 18px; font-weight: 700; margin-top: 2px; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  th, td { border: 1px solid var(--border); padding: 5px 8px; text-align: left; white-space: nowrap; }
+  th { background: #f1f5f9; position: sticky; top: 0; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .tab { padding: 5px 12px; border-radius: 999px; background: #e2e8f0; cursor: pointer; font-size: 12.5px; }
+  .tab.active { background: var(--accent); color: #fff; }
+  .table-wrap { max-height: 420px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+  pre.log { background: #0f172a; color: #cbd5e1; padding: 12px; border-radius: 8px;
+            max-height: 200px; overflow: auto; font-size: 12px; white-space: pre-wrap; }
+  .file-list { display: flex; flex-direction: column; gap: 6px; }
+  .file-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+               border: 1px solid var(--border); border-radius: 8px; }
+  .file-item a { color: var(--accent); text-decoration: none; font-weight: 500; }
+  .file-item .size { color: var(--muted); font-size: 12px; margin-left: auto; }
+  .keys-box { max-height: 120px; overflow: auto; border: 1px solid var(--border);
+              border-radius: 8px; padding: 8px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .keys-box label { font-size: 12.5px; display: flex; align-items: center; gap: 4px; }
+  .error-text { color: var(--err); font-size: 13px; }
+  .muted { color: var(--muted); }
+  .mono { font-family: Consolas, monospace; }
+  .gap { margin-top: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>DeepSeek 用量导出工具</h1>
+  <span class="ver">v1.0.1</span>
+  <span class="hint" style="color:#dbeafe;margin-left:auto;">platform.deepseek.com/usage 数据导出 · 小时级 · 跨日 · 超30天自动分片</span>
+</header>
+<main>
+
+  <!-- 登录态 -->
+  <section class="card">
+    <h2>① 登录态（userToken）</h2>
+    <div class="row">
+      <div class="field" style="flex:1;">
+        <label>userToken（登录 platform.deepseek.com 后从浏览器获取，见下方指引）</label>
+        <input type="password" id="tokenInput" placeholder="粘贴 userToken…" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button id="btnVerify">保存并验证</button>
+      </div>
+    </div>
+    <label class="hint" style="margin-top:8px;display:flex;align-items:center;gap:6px;">
+      <input type="checkbox" id="saveTokenCb" checked> 保存到本机配置（供 dsu 命令行复用，存放于 ~/.dsusage/config.json）
+    </label>
+    <details style="margin-top:10px;">
+      <summary>如何获取 userToken？（点击展开）</summary>
+      <ol class="hint" style="line-height:1.8;">
+        <li>用 Chrome/Edge 登录 <b>platform.deepseek.com</b>，打开用量页 <b>platform.deepseek.com/usage</b>。</li>
+        <li>按 <span class="mono">F12</span> 打开开发者工具 → 切到 <b>Console</b>（控制台）。</li>
+        <li>粘贴并回车执行：
+          <br><span class="mono">copy(JSON.parse(localStorage.getItem('userToken')).value)</span>
+          <br>Token 已复制到剪贴板，粘贴到上方输入框即可。</li>
+        <li>Token 即登录会话，泄露等同于账号泄露；请妥善保管，仅在可信环境使用。</li>
+      </ol>
+    </details>
+    <div id="balanceArea" class="gap"></div>
+  </section>
+
+  <!-- 查询与导出 -->
+  <section class="card">
+    <h2>② 查询与导出</h2>
+    <div class="row">
+      <div class="field">
+        <label>快捷范围</label>
+        <select id="preset">
+          <option value="today">今天</option>
+          <option value="yesterday">昨天</option>
+          <option value="last7">最近 7 天</option>
+          <option value="last30" selected>最近 30 天</option>
+          <option value="thisMonth">本月</option>
+          <option value="lastMonth">上月</option>
+          <option value="custom">自定义…</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>开始日期</label>
+        <input type="date" id="startDate">
+      </div>
+      <div class="field">
+        <label>结束日期</label>
+        <input type="date" id="endDate">
+      </div>
+      <div class="field">
+        <label>时区</label>
+        <select id="tzSelect">
+          <option value="28800">UTC+08:00（北京时间）</option>
+          <option value="0">UTC+00:00</option>
+          <option value="-28800">UTC-08:00</option>
+          <option value="local">本机时区</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>粒度</label>
+        <select id="granularity">
+          <option value="auto">自动（单日=小时）</option>
+          <option value="hourly">强制小时级（逐日请求）</option>
+          <option value="daily">按天聚合</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>导出格式</label>
+        <select id="formats" multiple size="3" style="height:76px;">
+          <option value="xlsx" selected>Excel (.xlsx)</option>
+          <option value="csv" selected>CSV</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <label class="hint" style="display:flex;align-items:center;gap:6px;white-space:nowrap;">
+          <input type="checkbox" id="includeRaw" checked> 含官方原始导出
+        </label>
+      </div>
+    </div>
+    <div class="row gap">
+      <div class="field" style="flex:1;">
+        <label>API Key 筛选（留空 = 全部）</label>
+        <div class="keys-box" id="keysBox"><span class="hint">点击「验证 Token」后加载可用 Key…</span></div>
+      </div>
+    </div>
+    <div class="row gap">
+      <button id="btnPreview" class="secondary">获取预览</button>
+      <button id="btnExport">开始导出</button>
+      <span class="hint">范围超过 30 天会自动分片抓取后合并；小时级将逐日请求。</span>
+    </div>
+    <div id="queryError" class="error-text gap"></div>
+  </section>
+
+  <!-- 结果 -->
+  <section class="card" id="resultSection" style="display:none;">
+    <h2>③ 结果</h2>
+    <div class="cards" id="totalsCards"></div>
+    <div class="gap">
+      <div class="tabs" id="tableTabs"></div>
+      <div class="table-wrap"><table id="previewTable"></table></div>
+    </div>
+  </section>
+
+  <!-- 导出任务 -->
+  <section class="card" id="jobSection" style="display:none;">
+    <h2>④ 导出任务</h2>
+    <pre class="log" id="jobLog">准备中…</pre>
+    <div class="file-list gap" id="jobFiles"></div>
+  </section>
+
+  <!-- 历史导出 -->
+  <section class="card">
+    <h2>⑤ 本机导出记录 <button class="secondary" id="btnReloadExports" style="margin-left:8px;padding:4px 10px;">刷新</button></h2>
+    <div id="exportsList"><span class="hint">暂无记录</span></div>
+  </section>
+
+  <footer class="hint" style="text-align:center;margin:10px 0 24px;">
+    ds-usage-export v1.0.1 · 数据仅经本机与 platform.deepseek.com 之间传输 · 请勿将 Token 与导出文件外泄
+  </footer>
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const state = { token: null, tables: [], jobTimer: null };
+
+// ---------- 工具 ----------
+function fmt(n) {
+  if (n === null || n === undefined) return "—";
+  return Number(n).toLocaleString("zh-CN");
+}
+function setErr(msg) { $("queryError").textContent = msg || ""; }
+function today() { const d = new Date(); return d.toISOString().slice(0, 10); }
+function daysAgo(n) { const d = new Date(Date.now() - n * 86400000); return d.toISOString().slice(0, 10); }
+function monthRange(offset) {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth() + offset;
+  const d0 = new Date(y, m, 1);
+  const d1 = new Date(y, m + 1, 0);
+  return [d0.toISOString().slice(0, 10), d1.toISOString().slice(0, 10)];
+}
+function applyPreset(p) {
+  let s, e;
+  if (p === "today") { s = e = today(); }
+  else if (p === "yesterday") { s = e = daysAgo(1); }
+  else if (p === "last7") { s = daysAgo(6); e = today(); }
+  else if (p === "last30") { s = daysAgo(29); e = today(); }
+  else if (p === "thisMonth") { [s, e] = monthRange(0); }
+  else if (p === "lastMonth") { [s, e] = monthRange(-1); }
+  else return;
+  $("startDate").value = s; $("endDate").value = e;
+}
+function selectedKeys() {
+  return Array.from(document.querySelectorAll("#keysBox input:checked")).map(x => x.value);
+}
+function payload(extra) {
+  return Object.assign({
+    token: state.token === "__saved__" ? null : state.token,
+    start: $("startDate").value,
+    end: $("endDate").value,
+    tz: $("tzSelect").value,
+    granularity: $("granularity").value,
+    api_key_ids: selectedKeys().length ? selectedKeys() : null,
+  }, extra || {});
+}
+async function post(url, body) {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({ ok: false, error: "响应异常" }));
+  if (!j.ok && j.error) throw new Error(j.error);
+  return j;
+}
+
+// ---------- ① 登录 ----------
+async function verifyToken() {
+  const token = $("tokenInput").value.trim();
+  if (!token) { setErr("请先粘贴 userToken"); return; }
+  state.token = token;
+  setErr("");
+  $("btnVerify").disabled = true;
+  $("btnVerify").textContent = "验证中…";
+  try {
+    if ($("saveTokenCb").checked) {
+      await post("/api/save_token", { token }).catch(() => {});
+    }
+    const j = await post("/api/check", { token });
+    let html = '<div class="cards">';
+    for (const w of j.wallets || []) {
+      html += `<div class="stat"><div class="k">余额 ${w.currency}</div><div class="v">${w.balance}</div></div>`;
+    }
+    for (const w of j.bonus || []) {
+      html += `<div class="stat"><div class="k">赠送余额 ${w.currency}</div><div class="v">${w.balance}</div></div>`;
+    }
+    html += '</div>';
+    $("balanceArea").innerHTML = html + '<p class="hint" style="margin:8px 0 0;">Token 有效 ✓ 本月 Token 用量: '
+      + fmt(j.monthly_token_usage) + (j.monthly_costs && j.monthly_costs.length
+        ? ' · 本月费用: ' + j.monthly_costs.map(c => `${c.currency} ${c.amount}`).join(", ") : '') + '</p>';
+    await loadKeys();
+  } catch (e) {
+    setErr("Token 验证失败：" + e.message);
+    $("balanceArea").innerHTML = "";
+  } finally {
+    $("btnVerify").disabled = false;
+    $("btnVerify").textContent = "保存并验证";
+  }
+}
+
+async function loadKeys() {
+  if (!state.token) return;
+  try {
+    const j = await post("/api/keys", { token: state.token });
+    const keys = j.keys || [];
+    if (!keys.length) {
+      $("keysBox").innerHTML = '<span class="hint">未找到 API Key</span>';
+      return;
+    }
+    let html = keys.map(k =>
+      `<label><input type="checkbox" value="${k.trackingId}"> ${k.name || "(未命名)"} <span class="muted mono">${k.sensitiveId || ""}</span></label>`
+    ).join("");
+    $("keysBox").innerHTML = html || '<span class="hint">未找到 API Key</span>';
+  } catch (e) {
+    $("keysBox").innerHTML = '<span class="hint">加载 Key 失败：' + e.message + '</span>';
+  }
+}
+
+// ---------- ② 预览 ----------
+function renderTotals(t) {
+  const cards = [
+    ["请求数", fmt(t.requests)], ["Token 合计", fmt(t.total_tokens)],
+    ["缓存命中", fmt(t.cache_hit)], ["缓存未命中", fmt(t.cache_miss)],
+    ["输出 Token", fmt(t.response)], ["费用合计", t.cost],
+  ];
+  $("totalsCards").innerHTML = cards.map(([k, v]) =>
+    `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+}
+
+function renderTables(tables) {
+  state.tables = tables || [];
+  const tabs = $("tableTabs");
+  tabs.innerHTML = state.tables.map((t, i) =>
+    `<span class="tab ${i === 0 ? "active" : ""}" data-i="${i}">${t.title}（${t.rows.length}）</span>`).join("");
+  if (state.tables.length) showTable(0);
+}
+
+function showTable(i) {
+  const t = state.tables[i];
+  document.querySelectorAll("#tableTabs .tab").forEach((el, j) => el.classList.toggle("active", j === i));
+  const table = $("previewTable");
+  if (!t) { table.innerHTML = ""; return; }
+  const head = "<tr>" + t.columns.map(c => `<th>${c}</th>`).join("") + "</tr>";
+  const body = t.rows.map(r => "<tr>" + t.columns.map(c => `<td>${r[c] ?? ""}</td>`).join("") + "</tr>").join("");
+  table.innerHTML = head + body;
+}
+
+async function fetchPreview() {
+  setErr("");
+  if (!state.token) { setErr("请先粘贴并验证 userToken"); return; }
+  $("btnPreview").disabled = true;
+  try {
+    const j = await post("/api/fetch", payload());
+    renderTotals(j.totals);
+    renderTables(j.tables);
+    $("resultSection").style.display = "";
+    $("resultSection").querySelector("h2").textContent =
+      `③ 结果（粒度: ${j.granularity === "hourly" ? "小时" : j.granularity === "daily" ? "天" : "自动"}）`;
+  } catch (e) {
+    setErr("获取失败：" + e.message);
+  } finally {
+    $("btnPreview").disabled = false;
+  }
+}
+
+// ---------- ④ 导出 ----------
+function startExport() {
+  setErr("");
+  if (!state.token) { setErr("请先粘贴并验证 userToken"); return; }
+  $("btnExport").disabled = true;
+  $("jobSection").style.display = "";
+  $("jobLog").textContent = "提交任务…";
+  $("jobFiles").innerHTML = "";
+  post("/api/export", payload({
+    formats: Array.from($("formats").selectedOptions).map(o => o.value),
+    include_raw: $("includeRaw").checked,
+  })).then(j => {
+    pollJob(j.job_id);
+  }).catch(e => {
+    $("jobLog").textContent = "提交失败：" + e.message;
+    $("btnExport").disabled = false;
+  });
+}
+
+function pollJob(jobId) {
+  if (state.jobTimer) clearInterval(state.jobTimer);
+  state.jobTimer = setInterval(async () => {
+    try {
+      const r = await fetch("/api/job/" + jobId);
+      const j = await r.json();
+      if (j.logs && j.logs.length) $("jobLog").textContent = j.logs.join("\n");
+      if (j.status === "done") {
+        clearInterval(state.jobTimer);
+        $("btnExport").disabled = false;
+        $("jobLog").textContent += "\n\n✅ 导出完成 → " + (j.out_dir || "");
+        if (j.totals) renderTotals(j.totals);
+        const files = j.files || [];
+        $("jobFiles").innerHTML = files.map(f =>
+          `<div class="file-item"><span class="badge ${f.category === "raw" ? "warn" : "ok"}">${f.category}</span>` +
+          `<a href="${f.url}" download>${f.name}</a><span class="size">${f.size}</span></div>`).join("")
+          || '<span class="hint">未生成文件</span>';
+        loadExports();
+      } else if (j.status === "error") {
+        clearInterval(state.jobTimer);
+        $("btnExport").disabled = false;
+        $("jobLog").textContent += "\n\n❌ " + (j.error || "导出失败");
+      }
+    } catch (e) { /* 轮询失败忽略 */ }
+  }, 1500);
+}
+
+// ---------- ⑤ 历史 ----------
+async function loadExports() {
+  try {
+    const r = await fetch("/api/exports");
+    const j = await r.json();
+    const items = j.items || [];
+    if (!items.length) { $("exportsList").innerHTML = '<span class="hint">暂无记录</span>'; return; }
+    $("exportsList").innerHTML = items.map(it =>
+      `<div class="card" style="margin-bottom:8px;padding:10px 14px;">
+         <div class="muted mono" style="margin-bottom:6px;">${it.dir}</div>
+         <div class="file-list">` +
+         it.files.map(f => `<div class="file-item"><a href="${f.url}" download>${f.name}</a><span class="size">${f.size}</span></div>`).join("") +
+       `</div></div>`).join("");
+  } catch (e) { /* ignore */ }
+}
+
+// ---------- 事件绑定与初始化 ----------
+$("btnVerify").addEventListener("click", verifyToken);
+$("btnPreview").addEventListener("click", fetchPreview);
+$("btnExport").addEventListener("click", startExport);
+$("btnReloadExports").addEventListener("click", loadExports);
+$("preset").addEventListener("change", () => applyPreset($("preset").value));
+$("tableTabs").addEventListener("click", (e) => {
+  const el = e.target.closest(".tab");
+  if (el) showTable(Number(el.dataset.i));
+});
+$("tokenInput").addEventListener("keydown", (e) => { if (e.key === "Enter") verifyToken(); });
+
+applyPreset("last30");
+loadExports();
+// 尝试读取本机已保存 Token 并自动验证
+fetch("/api/check", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
+  .then(r => r.json())
+  .then(j => {
+    if (j.ok) {
+      state.token = "__saved__";
+      $("balanceArea").innerHTML = '<p class="hint" style="margin:0;">已读取本机保存的 Token（dsu login 配置），无需重新粘贴。</p>';
+      renderTotalsCardsFromSummary(j);
+      loadKeys();
+    }
+  }).catch(() => {});
+function renderTotalsCardsFromSummary(j) {
+  let html = '<div class="cards">';
+  for (const w of j.wallets || []) html += `<div class="stat"><div class="k">余额 ${w.currency}</div><div class="v">${w.balance}</div></div>`;
+  html += '</div>';
+  $("balanceArea").innerHTML = html;
+}
+</script>
+</body>
+</html>

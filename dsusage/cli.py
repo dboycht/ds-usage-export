@@ -1,0 +1,265 @@
+"""命令行入口（dsu）。"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from datetime import date, datetime
+from pathlib import Path
+from typing import List, Optional
+
+from . import __version__
+from .api import (ApiError, AuthError, DeepSeekPlatformClient, parse_tz,
+                  tz_label)
+from .config import (clear_token, load_token, prompt_token_interactive,
+                     save_token)
+from .service import Service
+
+EPILOG = """示例:
+  dsu login                          # 交互式保存 userToken
+  dsu check                          # 校验 Token 并显示账户余额
+  dsu keys                           # 列出 API Key（trackingId / 名称）
+  dsu day --date 2026-07-01          # 单日小时级用量（CSV + Excel）
+  dsu range --start 2026-06-01 --end 2026-06-30 --granularity hourly
+  dsu range --start 2026-01-01 --end 2026-06-30 --include-raw   # 超长周期自动分片
+  dsu serve --port 8321              # 启动本地 Web 界面
+"""
+
+
+def _client(args) -> DeepSeekPlatformClient:
+    token = getattr(args, "token", None) or load_token()
+    return DeepSeekPlatformClient(token)
+
+
+def _parse_date(s: str) -> date:
+    try:
+        return date.fromisoformat(s)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"日期格式应为 YYYY-MM-DD: {s!r}")
+
+
+def cmd_login(args) -> int:
+    token = args.token
+    if not token:
+        token = prompt_token_interactive()
+    if not token:
+        print("未输入 Token，已取消。", file=sys.stderr)
+        return 1
+    client = DeepSeekPlatformClient(token)
+    try:
+        summary = client.check()
+    except AuthError as e:
+        print(f"Token 校验失败：{e}", file=sys.stderr)
+        return 1
+    save_token(token, {"saved_at": datetime.now().isoformat(timespec="seconds")})
+    print("Token 已保存到", _cfg_path())
+    print_summary(summary)
+    return 0
+
+
+def cmd_check(args) -> int:
+    client = _client(args)
+    try:
+        summary = client.check()
+    except AuthError as e:
+        print(f"校验失败：{e}", file=sys.stderr)
+        print("请重新登录：dsu login", file=sys.stderr)
+        return 1
+    print("Token 有效 ✓")
+    print_summary(summary)
+    return 0
+
+
+def print_summary(summary) -> None:
+    """打印用户摘要（余额、本月用量）。"""
+    biz = summary if isinstance(summary, dict) else {}
+    if isinstance(biz, dict) and "normal_wallets" in biz:
+        for w in biz.get("normal_wallets", []):
+            print(f"  余额[{w.get('currency')}]: {w.get('balance')}")
+        for w in biz.get("bonus_wallets", []):
+            print(f"  赠送余额[{w.get('currency')}]: {w.get('balance')}")
+        if biz.get("monthly_token_usage") is not None:
+            print(f"  本月 Token 用量: {biz.get('monthly_token_usage')}")
+        for c in biz.get("monthly_costs", []):
+            print(f"  本月费用[{c.get('currency')}]: {c.get('amount')}")
+    else:
+        print("  ", json.dumps(biz, ensure_ascii=False)[:400])
+
+
+def cmd_keys(args) -> int:
+    client = _client(args)
+    try:
+        keys = client.get_api_keys()
+    except AuthError as e:
+        print(f"校验失败：{e}", file=sys.stderr)
+        return 1
+    if not keys:
+        print("未找到 API Key。")
+        return 0
+    print(f"{'trackingId':<40} {'名称':<24} 敏感ID")
+    for k in keys:
+        print(f"{k.get('trackingId') or '':<40} {(k.get('name') or '')[:24]:<24} {k.get('sensitiveId') or ''}")
+    print(f"\n共 {len(keys)} 个 API Key。")
+    return 0
+
+
+def _run_query(args) -> int:
+    client = _client(args)
+    svc = Service(client)
+    start = args.start
+    end = args.end
+    tz_sec = parse_tz(args.tz)
+    granularity = args.granularity
+    if args.granularity == "auto" and start == end:
+        granularity = "hourly"   # 单日默认小时级
+    formats = ["xlsx", "csv"] if args.format == "both" else [args.format]
+    api_key_ids = args.api_key.split(",") if args.api_key else None
+    try:
+        result = svc.run_export(
+            start, end, tz_sec, granularity, formats,
+            out_dir=Path(args.out) if args.out else None,
+            include_raw=args.include_raw,
+            api_key_tracking_ids=api_key_ids,
+            progress=lambda m: print("  ·", m, file=sys.stderr),
+        )
+    except AuthError as e:
+        print(f"认证失败：{e}", file=sys.stderr)
+        return 1
+    except ApiError as e:
+        print(f"获取失败：{e}", file=sys.stderr)
+        return 1
+
+    totals = result["totals"]
+    if args.granularity == "hourly" and totals["granularity"] != "hourly":
+        print("  ⚠ 请求小时级，但平台对所选范围返回了天级粒度（可能该时段无小时数据）。", file=sys.stderr)
+    print(f"\n导出完成 → {result['out_dir']}")
+    print(f"  周期: {start} ~ {end}  时区: {tz_label(tz_sec)}  粒度: {totals['granularity']}")
+    print(f"  请求数: {totals['requests']:,}  缓存命中: {totals['cache_hit']:,}  "
+          f"缓存未命中: {totals['cache_miss']:,}  输出: {totals['response']:,}")
+    print(f"  Token 合计: {totals['total_tokens']:,}  费用合计: {totals['cost']:.6f}")
+    for cat in ("xlsx", "csv", "raw", "meta"):
+        if result["files"].get(cat):
+            for f in result["files"][cat]:
+                print(f"  [{cat}] {f}")
+    return 0
+
+
+def cmd_day(args) -> int:
+    args.start = args.end = args.date
+    if args.granularity == "auto":
+        args.granularity = "hourly"
+    return _run_query(args)
+
+
+def cmd_serve(args) -> int:
+    try:
+        from .webapp import run_server
+    except ImportError as e:
+        print(f"Web 界面需要 flask：pip install -r requirements.txt（{e}）", file=sys.stderr)
+        return 1
+    return run_server(args.host, args.port, debug=args.debug)
+
+
+def cmd_logout(args) -> int:
+    if clear_token():
+        print("已清除本地保存的 Token。")
+    else:
+        print("未找到已保存的 Token。")
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="dsu",
+        description=f"DeepSeek 开放平台用量导出工具 v{__version__} "
+                    "(platform.deepseek.com/usage 数据导出)",
+        epilog=EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument("-v", "--version", action="version", version=__version__)
+    sub = p.add_subparsers(dest="cmd")
+
+    def add_common(sp):
+        sp.add_argument("--token", help="直接指定 userToken（不读取已保存的配置）")
+
+    sp = sub.add_parser("login", help="保存 userToken（登录态）")
+    sp.add_argument("--token", help="直接粘贴 token（否则交互输入）")
+    sp.set_defaults(func=cmd_login)
+
+    sp = sub.add_parser("check", help="校验 Token 并显示账户信息")
+    add_common(sp)
+    sp.set_defaults(func=cmd_check)
+
+    sp = sub.add_parser("keys", help="列出 API Key")
+    add_common(sp)
+    sp.set_defaults(func=cmd_keys)
+
+    sp = sub.add_parser("day", help="单日小时级用量导出")
+    add_common(sp)
+    sp.add_argument("--date", required=True, type=_parse_date, help="日期 YYYY-MM-DD")
+    sp.add_argument("--tz", default="local", help="时区（+08:00 / 28800 / 8.0 / local）")
+    sp.add_argument("--granularity", choices=["auto", "hourly", "daily"], default="auto")
+    sp.add_argument("--format", choices=["xlsx", "csv", "both"], default="both")
+    sp.add_argument("--out", help="输出目录（默认 ./exports）")
+    sp.add_argument("--include-raw", action="store_true", help="同时下载官方原始导出 CSV")
+    sp.add_argument("--api-key", help="仅导出指定 trackingId（逗号分隔多个）")
+    sp.set_defaults(func=cmd_day)
+
+    sp = sub.add_parser("range", help="日期范围导出（超 30 天自动分片）")
+    add_common(sp)
+    sp.add_argument("--start", required=True, type=_parse_date, help="开始日期 YYYY-MM-DD")
+    sp.add_argument("--end", required=True, type=_parse_date, help="结束日期 YYYY-MM-DD")
+    sp.add_argument("--tz", default="local", help="时区（+08:00 / 28800 / 8.0 / local）")
+    sp.add_argument("--granularity", choices=["auto", "hourly", "daily"], default="auto",
+                    help="auto=按服务端粒度；hourly=逐日强制小时桶；daily=按天聚合")
+    sp.add_argument("--format", choices=["xlsx", "csv", "both"], default="both")
+    sp.add_argument("--out", help="输出目录（默认 ./exports）")
+    sp.add_argument("--include-raw", action="store_true", help="同时下载官方原始导出 CSV")
+    sp.add_argument("--api-key", help="仅导出指定 trackingId（逗号分隔多个）")
+    sp.set_defaults(func=_run_query)
+
+    sp = sub.add_parser("serve", help="启动本地 Web 界面")
+    sp.add_argument("--host", default="127.0.0.1")
+    sp.add_argument("--port", type=int, default=8321)
+    sp.add_argument("--debug", action="store_true")
+    sp.set_defaults(func=cmd_serve)
+
+    sp = sub.add_parser("logout", help="清除本地保存的 Token")
+    sp.set_defaults(func=cmd_logout)
+
+    return p
+
+
+def _setup_console() -> None:
+    """Windows 控制台以 UTF-8 输出中文。"""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure:
+            try:
+                reconfigure(encoding="utf-8")
+            except Exception:  # noqa: BLE001
+                pass
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    _setup_console()
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if not getattr(args, "func", None):
+        parser.print_help()
+        return 0
+    try:
+        return args.func(args) or 0
+    except KeyboardInterrupt:
+        print("\n已取消。", file=sys.stderr)
+        return 130
+
+
+def _cfg_path() -> Path:
+    from .config import config_path
+    return config_path()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

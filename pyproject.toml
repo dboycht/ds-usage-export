@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ds-usage-export"
+version = "1.0.1"
+description = "DeepSeek 开放平台用量导出工具 —— 小时级用量、跨日汇总、官方原始数据一键导出 (CSV/Excel)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "ds-usage-export contributors" }]
+dependencies = [
+    "requests>=2.28",
+    "openpyxl>=3.1",
+]
+
+[project.optional-dependencies]
+web = ["flask>=2.2"]
+browser = ["playwright>=1.40"]
+
+[project.scripts]
+dsu = "dsusage.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["dsusage*"]
+
+[tool.setuptools.package-data]
+dsusage = ["web/static/*.html", "web/static/*.js", "web/static/*.css"]

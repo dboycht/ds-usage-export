@@ -161,6 +161,70 @@ def cmd_serve(args) -> int:
     return run_server(args.host, args.port, debug=args.debug)
 
 
+def cmd_diagnose(args) -> int:
+    """抓取原始 amount/cost 响应并保存，用于排查平台数据结构。"""
+    import json as _json
+    from pathlib import Path as _Path
+    from .api import start_end_sec, tz_label
+
+    client = _client(args)
+    out_dir = _Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    tz_sec = parse_tz(args.tz)
+    s0, e0 = start_end_sec(args.date, args.date, tz_sec)
+    print(f"请求: amount/cost, 窗口 {args.date} (UTC秒 {s0}~{e0}, tz {tz_label(tz_sec)})")
+    try:
+        amount_biz = client.get_usage_amount(s0, e0, tz_sec)
+        cost_biz = client.get_usage_cost(s0, e0, tz_sec)
+    except ApiError as e:
+        print(f"请求失败：{e}", file=sys.stderr)
+        return 1
+
+    def _shape(obj, prefix=""):
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                t = type(v).__name__
+                if isinstance(v, list):
+                    t = f"list[{len(v)}]"
+                    if v and isinstance(v[0], dict):
+                        t += " of " + ",".join(v[0].keys())
+                print(f"  {prefix}{k}: {t}")
+        elif isinstance(obj, list):
+            print(f"  {prefix}[list {len(obj)}]")
+            if obj:
+                _shape(obj[0], prefix + "  [0].")
+        else:
+            print(f"  {prefix}{type(obj).__name__}")
+
+    for name, biz in (("amount", amount_biz), ("cost", cost_biz)):
+        path = out_dir / f"diagnose_{name}_{args.date}.json"
+        path.write_text(_json.dumps(biz, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"\n=== {name} 结构 ===  完整响应已存: {path}")
+        _shape(biz)
+        # 提取 api_key 类型样例
+        def _first_api_key(obj):
+            if isinstance(obj, dict):
+                for s in obj.get("series") or []:
+                    if isinstance(s, dict) and "api_key" in s:
+                        return s["api_key"]
+                for d in obj.get("data") or []:
+                    if isinstance(d, dict):
+                        for s in d.get("series") or []:
+                            if isinstance(s, dict) and "api_key" in s:
+                                return s["api_key"]
+            return None
+        ak = _first_api_key(biz)
+        if ak is not None:
+            if isinstance(ak, dict):
+                print(f"  api_key 字段是 dict，键: {list(ak.keys())}")
+            else:
+                print(f"  api_key 字段是 {type(ak).__name__}: {str(ak)[:60]!r}")
+        print(f"  bucket: {biz.get('bucket') if isinstance(biz, dict) else '?'}")
+    print(f"\n诊断文件目录: {out_dir.resolve()}")
+    print("请把该目录下 diagnose_*.json 的内容或路径发给开发者核对。")
+    return 0
+
+
 def cmd_logout(args) -> int:
     if clear_token():
         print("已清除本地保存的 Token。")
@@ -224,6 +288,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--port", type=int, default=8321)
     sp.add_argument("--debug", action="store_true")
     sp.set_defaults(func=cmd_serve)
+
+    sp = sub.add_parser("diagnose", help="抓取原始响应排查平台数据结构")
+    add_common(sp)
+    sp.add_argument("--date", type=_parse_date, default=date.today(), help="日期 YYYY-MM-DD（默认今天）")
+    sp.add_argument("--tz", default="local", help="时区（+08:00 / 28800 / 8.0 / local）")
+    sp.add_argument("--out", default="diagnose", help="输出目录（默认 ./diagnose）")
+    sp.set_defaults(func=cmd_diagnose)
 
     sp = sub.add_parser("logout", help="清除本地保存的 Token")
     sp.set_defaults(func=cmd_logout)

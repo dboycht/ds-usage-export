@@ -302,6 +302,23 @@ class DeepSeekPlatformClient:
     # -- 解析 --------------------------------------------------------------
 
     @staticmethod
+    def _norm_api_key(value: Any) -> str:
+        """把 api_key 字段归一化为稳定字符串。
+
+        平台 by_api_key 系列接口的 api_key 可能是字符串 trackingId，
+        也可能是对象（如 {tracking_id/name/sensitive_id/...}），统一提取为 id 字符串。
+        """
+        if isinstance(value, dict):
+            for key in ("tracking_id", "trackingId", "id", "api_key_id",
+                        "sensitive_id", "name"):
+                v = value.get(key)
+                if isinstance(v, str) and v:
+                    return v
+            # 兜底：结构化序列化，保证可哈希且确定
+            return json.dumps(value, ensure_ascii=False, sort_keys=True)
+        return str(value or "")
+
+    @staticmethod
     def _biz_data(data: Any) -> Any:
         if isinstance(data, dict):
             biz = data.get("biz_data")
@@ -325,7 +342,7 @@ class DeepSeekPlatformClient:
         for raw in biz.get("series") or []:
             if not isinstance(raw, dict):
                 continue
-            ak = raw.get("api_key") or ""
+            ak = self._norm_api_key(raw.get("api_key"))
             model = raw.get("model") or "unknown"
             ser = Series(api_key=ak, model=model)
             for b in raw.get("buckets") or []:
@@ -358,7 +375,7 @@ class DeepSeekPlatformClient:
             for raw in cur.get("series") or []:
                 if not isinstance(raw, dict):
                     continue
-                ak = raw.get("api_key") or ""
+                ak = self._norm_api_key(raw.get("api_key"))
                 model = raw.get("model") or "unknown"
                 ser = Series(api_key=ak, model=model)
                 for b in raw.get("buckets") or []:

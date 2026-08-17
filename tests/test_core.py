@@ -111,6 +111,26 @@ class TestParse(unittest.TestCase):
         self.assertAlmostEqual(ds.series[0].buckets[0].cost, 0.0123, places=6)
         self.assertIn("CNY", ds.cost_by_currency)
 
+    def test_api_key_as_dict(self):
+        """真实平台 cost 响应的 api_key 可能是对象（曾导致 unhashable dict 崩溃）。"""
+        c = self._client()
+        s = date_to_start_sec(date(2026, 7, 1), TZ8)
+        ak_obj = {"tracking_id": "k1", "name": "KeyA", "sensitive_id": "sk-***"}
+        amt = make_amount_biz(s, s + 3600, 3600, [{
+            "api_key": ak_obj, "model": "deepseek-chat",
+            "buckets": [{"time": s, "usage": {"RESPONSE_TOKEN": 100, "REQUEST": 1}}]}])
+        cost = make_cost_biz(s, s + 3600, 3600, "CNY", [{
+            "api_key": ak_obj, "model": "deepseek-chat",
+            "buckets": [{"time": s, "cost": "0.0123"}]}])
+        ds = c.parse_amount(amt, TZ8)
+        ds.cost_by_currency = c.parse_cost(cost, TZ8)
+        c.merge_cost_into_amount(ds)  # 不应再抛 unhashable dict
+        self.assertEqual(ds.series[0].api_key, "k1")
+        self.assertAlmostEqual(ds.series[0].buckets[0].cost, 0.0123, places=6)
+        # 无已知 id 键的 dict 兜底为稳定 JSON
+        odd = {"foo": {"bar": 1}}
+        self.assertEqual(c._norm_api_key(odd), '{"foo": {"bar": 1}}')
+
     def test_merge_datasets(self):
         s1 = date_to_start_sec(date(2026, 7, 1), TZ8)
         s2 = date_to_start_sec(date(2026, 7, 2), TZ8)

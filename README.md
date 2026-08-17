@@ -1,4 +1,4 @@
-# ds-usage-export（DeepSeek 用量导出工具）v1.0.2
+# ds-usage-export（DeepSeek 用量导出工具）v1.0.3
 
 解决 DeepSeek 开放平台用量后台（https://platform.deepseek.com/usage）的两个痛点：
 
@@ -16,7 +16,7 @@
 |---|---|
 | 登录态复用 | 读取浏览器 `localStorage['userToken']`（提供控制台一行命令），保存到本机 `~/.dsusage/config.json`，CLI 与 Web 共用 |
 | 一键导出 | `dsu go --start X --end Y`：全部格式 + 官方原始数据 + 自动打开 HTML 报告 |
-| 报纸风 HTML 报告 | 自包含 `report.html`：报头 + 头版数据 + 内联 SVG 图表（每日费用 / Token 构成 / 小时走势 / 模型占比 / API Key 排名）+ 数据表，报纸编辑部排版 |
+| 报纸风 HTML 报告 | 自包含 `report.html`：报头 + 头版数据（完整数字）+ 内联 SVG 图表（每日费用 / Token 构成 / 小时走势 / 模型占比 / API Key 排名）+ 数据表；图表带**悬停提示**与**动效**，报纸编辑部排版 |
 | 小时级明细 | `hourly` 粒度：逐日请求（24h 窗口）强制平台返回小时桶，跨天合并为连续小时序列 |
 | 多粒度 | `auto`（单日=小时、多日=按服务端粒度）、`hourly`、`daily` |
 | 超长周期 | 任意范围自动按 ≤30 天分片抓取，去重合并 |
@@ -162,7 +162,8 @@ python -m unittest discover -s tests -v
 
 ## 版本历史
 
-- **v1.0.2**（当前）：一键导出 `dsu go`、报纸编辑风 HTML 图表报告、Web 界面报纸风改版、
+- **v1.0.3**（当前）：完整数字显示（不缩写）、图表悬停提示、报带动效；版本 tag 1.0.3。
+- **v1.0.2**：一键导出 `dsu go`、报纸编辑风 HTML 图表报告、Web 界面报纸风改版、
   `api_key` 对象结构兼容修复。详见 [CHANGELOG.md](CHANGELOG.md)。
 - **v1.0.1**：首版：登录态复用、小时/日/多维度查询、CSV/Excel/官方原始导出、
   超 30 天自动分片、API Key 筛选、CLI + Web 双入口。

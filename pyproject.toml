@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ds-usage-export"
-version = "1.0.2"
+version = "1.0.3"
 description = "DeepSeek 开放平台用量导出工具 —— 小时级用量、跨日汇总、官方原始数据一键导出 (CSV/Excel)"
 readme = "README.md"
 requires-python = ">=3.9"

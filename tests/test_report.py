@@ -71,6 +71,31 @@ class TestReport(unittest.TestCase):
         self.assertNotIn('src="http', html_text)
         self.assertNotIn('href="http', html_text)
 
+    def test_tooltips_and_animations(self):
+        html_text = render_report(self.ds, self.tables, self.totals, self.meta)
+        # 悬停提示：SVG <title>
+        self.assertIn("<title>", html_text)
+        self.assertGreaterEqual(html_text.count("<title>"), 8)
+        # 动效 CSS
+        for css in ("dsu-grow-v", "dsu-grow-h", "dsu-draw", "dsu-fade-up",
+                    "donut-seg", "pt-hit", "v-bar", "h-bar"):
+            self.assertIn(css, html_text, f"缺少动效 {css}")
+
+    def test_full_number_display(self):
+        """头版数据必须显示完整数字，不能缩写为 1.3B 之类。"""
+        totals = dict(self.totals)
+        totals.update({
+            "requests": 1300000000,
+            "total_tokens": 1300000000,
+            "cost": 12345.6789,
+            "cache_hit": 87654321,
+        })
+        html_text = render_report(self.ds, self.tables, totals, self.meta)
+        self.assertIn("1,300,000,000", html_text)
+        self.assertIn("12,345.6789", html_text)
+        self.assertIn("87,654,321", html_text)
+        self.assertNotIn("1.3B", html_text)
+
     def test_build_report_file(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "report.html"

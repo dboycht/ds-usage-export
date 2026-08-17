@@ -1,4 +1,4 @@
-﻿# ds-usage-export (DeepSeek Usage Export Tool) v1.0.7
+﻿# ds-usage-export (DeepSeek Usage Export Tool) v1.0.8
 
 > [中文版 README](README.md) · English
 
@@ -200,7 +200,7 @@ See `docs/api-notes.md` for details.
 
 ## Version History
 
-- **v1.0.7** (current): bar/line toggle (default bar), timeline horizontal zoom (thin bars become thick, auto binning), click-to-pin tooltips; 24-hour sample reports.\n- **v1.0.6**: wheel zoom (mouse-anchored, animated) + zoom buttons + drag panning; README screenshots.\n- **v1.0.5**: wheel horizontal scroll for dense charts, click-to-pin tooltips, internal DEVELOPMENT.md (local only).\n- **v1.0.4**: multi-language (zh/en), fixed favicon/404 error spam in the web console.
+- **v1.0.8** (current): entrance animation only on first open; zoom/pan use smooth transitions only.\n- **v1.0.7**: bar/line toggle (default bar), timeline horizontal zoom (thin bars become thick, auto binning), click-to-pin tooltips; 24-hour sample reports.\n- **v1.0.6**: wheel zoom (mouse-anchored, animated) + zoom buttons + drag panning; README screenshots.\n- **v1.0.5**: wheel horizontal scroll for dense charts, click-to-pin tooltips, internal DEVELOPMENT.md (local only).\n- **v1.0.4**: multi-language (zh/en), fixed favicon/404 error spam in the web console.
 - **v1.0.3**: full-number display, chart hover tooltips, newspaper animations; tag 1.0.3.
 - **v1.0.2**: one-click `dsu go`, newspaper-style HTML report, newspaper web UI,
   `api_key` object-structure fix. See [CHANGELOG.md](CHANGELOG.md).

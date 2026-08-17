@@ -414,15 +414,16 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
       .fig:nth-of-type(4) {{ animation-delay: .21s; }}
       .fig:nth-of-type(5) {{ animation-delay: .28s; }}
       .fig:nth-of-type(6) {{ animation-delay: .35s; }}
-      svg .v-bar {{ transform-box: fill-box; transform-origin: bottom;
-                    animation: dsu-grow-v .7s cubic-bezier(.2,.7,.3,1) both; }}
+      /* 首次打开才使用「井喷式」入场动画；交互引擎重绘（缩放/拖拽/切换）只做平滑过渡 */
+      svg .v-bar {{ transform-box: fill-box; transform-origin: bottom; }}
+      .dsu-enter svg .v-bar {{ animation: dsu-grow-v .7s cubic-bezier(.2,.7,.3,1) both; }}
       svg .h-bar {{ transform-box: fill-box; transform-origin: left;
                     animation: dsu-grow-h .8s cubic-bezier(.2,.7,.3,1) both; }}
-      svg .line-draw {{ stroke-dasharray: 1; animation: dsu-draw 1.3s ease-out .15s both; }}
-      svg .area-fade {{ animation: dsu-fade-in 1s ease-out .4s both; }}
+      .dsu-enter svg .line-draw {{ stroke-dasharray: 1; animation: dsu-draw 1.3s ease-out .15s both; }}
+      .dsu-enter svg .area-fade {{ animation: dsu-fade-in 1s ease-out .4s both; }}
       svg .donut-seg {{ transform-box: fill-box; transform-origin: center;
                         animation: dsu-fade-in .8s ease-out both; }}
-      svg .pt {{ animation: dsu-fade-in .5s ease-out .8s both; }}
+      .dsu-enter svg .pt {{ animation: dsu-fade-in .5s ease-out .8s both; }}
       svg .pt-hit {{ cursor: pointer; }}
       /* 悬停反馈 */
       svg rect, svg path, svg circle {{ transition: opacity .18s ease, filter .18s ease; cursor: default; }}
@@ -719,6 +720,11 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
           }}
         }});
         document.addEventListener('mouseup', function(){{ drag = null; }});
+        // 首次打开才播放入场动画；一旦交互（滚轮/点击/拖拽）或超时即移除，之后仅平滑过渡
+        host.classList.add('dsu-enter');
+        setTimeout(function(){{ host.classList.remove('dsu-enter'); }}, 1600);
+        fig.addEventListener('wheel', function(){{ host.classList.remove('dsu-enter'); }});
+        fig.addEventListener('mousedown', function(){{ host.classList.remove('dsu-enter'); }});
         render();
       }});
     }})();

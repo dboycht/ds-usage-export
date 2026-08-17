@@ -1,4 +1,4 @@
-"""单元测试：时间工具、API 解析、数据集合并/降级、官方 CSV 解析、聚合、导出。"""
+﻿"""单元测试：时间工具、API 解析、数据集合并/降级、官方 CSV 解析、聚合、导出。"""
 
 from __future__ import annotations
 
@@ -270,7 +270,7 @@ class TestExporters(unittest.TestCase):
 
 class TestCli(unittest.TestCase):
     def test_version(self):
-        self.assertEqual(__version__, "1.0.4")
+        self.assertEqual(__version__, "1.0.5")
 
     def test_parser_builds(self):
         from dsusage.cli import build_parser

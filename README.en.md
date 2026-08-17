@@ -1,4 +1,4 @@
-# ds-usage-export (DeepSeek Usage Export Tool) v1.0.4
+﻿# ds-usage-export (DeepSeek Usage Export Tool) v1.0.5
 
 > [中文版 README](README.md) · English
 
@@ -24,7 +24,7 @@ chart report / official raw data** with one command.
 |---|---|
 | Reuse login state | Token from browser `localStorage['userToken']` (one-line console command provided), saved to `~/.dsusage/config.json`, shared by CLI & Web |
 | One-click export | `dsu go --start X --end Y`: all formats + official raw data + auto-open the HTML report |
-| Newspaper-style HTML report | Self-contained `report.html`: masthead + front-page stats (full numbers) + inline-SVG charts (daily cost / token composition / hourly trend / model share / API key ranking) + tables; charts have **hover tooltips** and **animations** |
+| Newspaper-style HTML report | Self-contained `report.html`: masthead + front-page stats (full numbers) + inline-SVG charts (daily cost / token composition / hourly trend / model share / API key ranking) + tables; charts have **hover tooltips** (**click to pin**), **wheel horizontal scroll** (many points) and **animations** |
 | Hourly detail | `hourly` granularity: per-day 24h windows force hourly buckets from the platform, merged across days |
 | Granularity modes | `auto` (single day = hourly, multi-day = server granularity), `hourly`, `daily` |
 | Long ranges | Any range auto-chunked at ≤30 days, de-duplicated and merged |
@@ -189,7 +189,7 @@ See `docs/api-notes.md` for details.
 
 ## Version History
 
-- **v1.0.4** (current): multi-language (zh/en), fixed favicon/404 error spam in the web console.
+- **v1.0.5** (current): wheel horizontal scroll for dense charts, click-to-pin tooltips, internal DEVELOPMENT.md.\n- **v1.0.4**: multi-language (zh/en), fixed favicon/404 error spam in the web console.
 - **v1.0.3**: full-number display, chart hover tooltips, newspaper animations; tag 1.0.3.
 - **v1.0.2**: one-click `dsu go`, newspaper-style HTML report, newspaper web UI,
   `api_key` object-structure fix. See [CHANGELOG.md](CHANGELOG.md).

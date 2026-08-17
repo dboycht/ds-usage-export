@@ -66,20 +66,55 @@ class TestReport(unittest.TestCase):
                       "数据图表", "svg", "模型费用占比", "API Key 费用排名",
                       "小时 Token 走势", "每日费用", "数据表", "日报", "footer"):
             self.assertIn(token, html_text, f"缺少 {token}")
-        # 自包含：无外部资源引用（仅允许 SVG 命名空间的 xmlns）
-        self.assertNotIn("<script", html_text)
+        # 自包含：无外部资源引用（内联 <script> 用于悬停/滚轮交互，属自包含）
+        self.assertNotIn("<script src", html_text)
+        self.assertNotIn("<script type=\"text/javascript\" src", html_text)
         self.assertNotIn('src="http', html_text)
         self.assertNotIn('href="http', html_text)
 
     def test_tooltips_and_animations(self):
         html_text = render_report(self.ds, self.tables, self.totals, self.meta)
-        # 悬停提示：SVG <title>
+        # 悬停提示：SVG <title> + data-tip
         self.assertIn("<title>", html_text)
         self.assertGreaterEqual(html_text.count("<title>"), 8)
+        self.assertIn("data-tip=", html_text)
         # 动效 CSS
         for css in ("dsu-grow-v", "dsu-grow-h", "dsu-draw", "dsu-fade-up",
                     "donut-seg", "pt-hit", "v-bar", "h-bar"):
             self.assertIn(css, html_text, f"缺少动效 {css}")
+
+    def test_tooltip_pin_and_wheel_scroll(self):
+        html_text = render_report(self.ds, self.tables, self.totals, self.meta)
+        for token in ("dsu-tip", "pinned", "data-tip", "scrollLeft",
+                      "fig::-webkit-scrollbar", "closest('[data-tip]')",
+                      "Escape", "pre-line"):
+            self.assertIn(token, html_text, f"缺少交互元素 {token}")
+
+    def test_many_bars_scrollable(self):
+        """数据点多时图表加宽并支持滚轮横滑。"""
+        from dsusage.api import DAY_SEC, date_to_start_sec
+        c = DeepSeekPlatformClient("t")
+        start = date_to_start_sec(date(2026, 6, 1), TZ8)
+        buckets = [{"time": start + i * DAY_SEC,
+                    "usage": {"PROMPT_CACHE_HIT_TOKEN": 10 + i,
+                              "RESPONSE_TOKEN": 5, "REQUEST": 1}}
+                   for i in range(30)]
+        amt = make_amount_biz(start, start + 30 * DAY_SEC, DAY_SEC,
+                              [{"api_key": "k1", "model": "m1", "buckets": buckets}])
+        cost = make_cost_biz(start, start + 30 * DAY_SEC, DAY_SEC, "CNY",
+                             [{"api_key": "k1", "model": "m1",
+                               "buckets": [{"time": start + i * DAY_SEC, "cost": "0.01"}
+                                           for i in range(30)]}])
+        ds = c.parse_amount(amt, TZ8, {"k1": "KeyA"})
+        ds.cost_by_currency = c.parse_cost(cost, TZ8)
+        c.merge_cost_into_amount(ds)
+        tables = build_tables(ds)
+        totals = compute_totals(ds)
+        html_text = render_report(ds, tables, totals, self.meta)
+        self.assertIn("width:1020px", html_text)   # 30 根柱 → 宽 SVG 可横滑 (30*34)
+        self.assertIn("min-width:1020px", html_text)
+        self.assertIn("scrollWidth", html_text)
+        self.assertIn("overflow-x: auto", html_text)
 
     def test_full_number_display(self):
         """头版数据必须显示完整数字，不能缩写为 1.3B 之类。"""

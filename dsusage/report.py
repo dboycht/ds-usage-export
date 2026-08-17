@@ -38,14 +38,22 @@ def esc(v: Any) -> str:
     return _html.escape(str(v if v is not None else ""))
 
 
+def _tip_attr(tip: str) -> str:
+    """把提示文本编码进 data-tip 属性：换行转义为字面 \\n，避免属性值换行被规范化。"""
+    return esc(tip.replace("\n", "\\n"))
+
+
 # ---------------------------------------------------------------------------
 # SVG 图表
 # ---------------------------------------------------------------------------
 
-def _svg_wrap(inner: str, w: int, h: int) -> str:
+def _svg_wrap(inner: str, w: int, h: int, scrollable: bool = False) -> str:
+    if scrollable:
+        style = f"display:block;width:{w}px;min-width:{w}px;height:auto;background:{PAPER};"
+    else:
+        style = f"display:block;max-width:{w}px;height:auto;background:{PAPER};"
     return (f'<svg viewBox="0 0 {w} {h}" width="100%" role="img" '
-            f'xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:{w}px;'
-            f'height:auto;background:{PAPER};">{inner}</svg>')
+            f'xmlns="http://www.w3.org/2000/svg" style="{style}">{inner}</svg>')
 
 
 def _ticks(vmax: float, n: int = 4) -> List[float]:
@@ -99,10 +107,12 @@ def _nice_round(v: float) -> float:
 
 def chart_bar(rows: Sequence[Tuple[str, float]], title: str,
               ylabel: str = "", h: int = 250, max_bars: int = 31) -> str:
-    """竖向柱状图；项数过多时自动转为折线图。"""
+    """竖向柱状图；项数过多时自动转为折线图；数据点多时加宽并支持滚轮横滑。"""
     if len(rows) > max_bars:
         return chart_line(rows, title, ylabel, h=h)
-    w = 760
+    n = len(rows)
+    scrollable = n > 18
+    w = max(900, n * 34) if scrollable else 760
     pad_l, pad_r, pad_t, pad_b = 52, 12, 46, 36
     plot_w = w - pad_l - pad_r
     plot_h = h - pad_t - pad_b
@@ -125,24 +135,27 @@ def chart_bar(rows: Sequence[Tuple[str, float]], title: str,
     # 坐标轴
     parts.append(f'<line x1="{pad_l}" y1="{pad_t + plot_h}" x2="{w - pad_r}" y2="{pad_t + plot_h}" '
                  f'stroke="{INK}" stroke-width="1.4"/>')
-    n = len(rows)
     slot = plot_w / n
     bar_w = min(slot * 0.62, 26)
+    step = max(1, n // 12)
+    label_idxs = set(range(0, n, step))
+    if n - 1 - max(label_idxs) >= step * 0.5:
+        label_idxs.add(n - 1)
     for i, (label, v) in enumerate(rows):
         bh = (v / tmax) * plot_h if v > 0 else 0
         x = pad_l + slot * i + (slot - bar_w) / 2
         y = pad_t + plot_h - bh
         color = RED if i == len(rows) - 1 else INK
         tip = f"{label}\n{_fmt_full(v)}" + (f"（{ylabel or '费用'}）" if ylabel else "")
-        parts.append(f'<rect class="v-bar" x="{x:.1f}" y="{y:.1f}" width="{bar_w:.1f}" '
-                     f'height="{max(bh, 0):.1f}" fill="{color}" opacity="0.92">'
+        parts.append(f'<rect class="v-bar" data-tip="{_tip_attr(tip)}" x="{x:.1f}" y="{y:.1f}" '
+                     f'width="{bar_w:.1f}" height="{max(bh, 0):.1f}" fill="{color}" opacity="0.92">'
                      f'<title>{esc(tip)}</title></rect>')
-        if bh > 20:
+        if bh > 20 and not scrollable:
             ly = max(y - 4, pad_t + 12)
             parts.append(f'<text x="{x + bar_w / 2:.1f}" y="{ly:.1f}" text-anchor="middle" '
                          f'font-family="{FONT}" font-size="9" fill="{INK}">{_fmt_num(v)}</text>')
-        # 横轴标签：间隔显示，边缘标签向内锚定避免被裁切
-        if n <= 12 or i % max(1, n // 12) == 0 or i == n - 1:
+        # 横轴标签：按最小间隔抽样，边缘标签向内锚定避免重叠/裁切
+        if i in label_idxs:
             cx = x + bar_w / 2
             if i == 0:
                 anchor, tx = "start", pad_l + 10
@@ -152,7 +165,7 @@ def chart_bar(rows: Sequence[Tuple[str, float]], title: str,
                 anchor, tx = "middle", cx
             parts.append(f'<text x="{tx:.1f}" y="{pad_t + plot_h + 18}" text-anchor="{anchor}" '
                          f'font-family="{FONT}" font-size="9.5" fill="{INK_SOFT}">{esc(label)}</text>')
-    return _svg_wrap("".join(parts), w, h)
+    return _svg_wrap("".join(parts), w, h, scrollable)
 
 
 def chart_stacked(rows: Sequence[Tuple[str, float, float, float]], title: str,
@@ -164,7 +177,9 @@ def chart_stacked(rows: Sequence[Tuple[str, float, float, float]], title: str,
     out_name = tr(lang, "legend_output")
     if len(rows) > max_bars:
         return chart_line([(l, a + b + c) for l, a, b, c in rows], title, tr(lang, "tokens_total"), h=h)
-    w = 760
+    n = len(rows)
+    scrollable = n > 18
+    w = max(900, n * 34) if scrollable else 760
     pad_l, pad_r, pad_t, pad_b = 52, 12, 46, 58
     plot_w = w - pad_l - pad_r
     plot_h = h - pad_t - pad_b
@@ -186,6 +201,10 @@ def chart_stacked(rows: Sequence[Tuple[str, float, float, float]], title: str,
     n = len(rows)
     slot = plot_w / n
     bar_w = min(slot * 0.62, 26)
+    step = max(1, n // 12)
+    label_idxs = set(range(0, n, step))
+    if n - 1 - max(label_idxs) >= step * 0.5:
+        label_idxs.add(n - 1)
     for i, (label, a, b, c) in enumerate(rows):
         x = pad_l + slot * i + (slot - bar_w) / 2
         y = pad_t + plot_h
@@ -195,12 +214,13 @@ def chart_stacked(rows: Sequence[Tuple[str, float, float, float]], title: str,
                                (a, colors[0], hit_name)):
             bh = (v / tmax) * plot_h if v > 0 else 0
             if bh > 0:
-                parts.append(f'<rect class="v-bar" x="{x:.1f}" y="{y - bh:.1f}" width="{bar_w:.1f}" '
-                             f'height="{bh:.1f}" fill="{color}" opacity="0.94">'
-                             f'<title>{esc(f"{label} · {name} {_fmt_full(v)}\n{seg_detail}")}</title>'
-                             f'</rect>')
+                tip = f"{label} · {name} {_fmt_full(v)}\n{seg_detail}"
+                parts.append(f'<rect class="v-bar" data-tip="{_tip_attr(tip)}" x="{x:.1f}" y="{y - bh:.1f}" '
+                             f'width="{bar_w:.1f}" height="{bh:.1f}" fill="{color}" opacity="0.94">'
+                             f'<title>{esc(tip)}</title></rect>')
                 y -= bh
-        if n <= 12 or i % max(1, n // 12) == 0 or i == n - 1:
+        # 横轴标签：按最小间隔抽样，边缘标签向内锚定避免重叠/裁切
+        if i in label_idxs:
             cx = x + bar_w / 2
             if i == 0:
                 anchor, tx = "start", pad_l + 10
@@ -212,25 +232,27 @@ def chart_stacked(rows: Sequence[Tuple[str, float, float, float]], title: str,
                          f'font-family="{FONT}" font-size="9.5" fill="{INK_SOFT}">{esc(label)}</text>')
     legend = ("<g font-family='%s' font-size='10' fill='%s'>" % (FONT, INK_SOFT)
               + "".join(
-                  f'<rect x="{72 + i * 150}" y="{h - 26}" width="10" height="10" fill="{colors[i]}"/>'
+                  f'<rect x="{72 + i * 150}" y="{h - 26}" width="10" height="10" fill="{colors[i]}">'
+                  f'<title>{esc(name)}</title></rect>'
                   f'<text x="{86 + i * 150}" y="{h - 17}">{name}</text>'
                   for i, name in enumerate((hit_name, miss_name, out_name)))
               + "</g>")
     parts.append(legend)
-    return _svg_wrap("".join(parts), w, h)
+    return _svg_wrap("".join(parts), w, h, scrollable)
 
 
 def chart_line(rows: Sequence[Tuple[str, float]], title: str,
                ylabel: str = "", h: int = 250) -> str:
-    """折线 + 面积图（长周期时间序列）。"""
-    w = 760
+    """折线 + 面积图（长周期时间序列）；数据点多时加宽并支持滚轮横滑。"""
+    n = len(rows)
+    scrollable = n > 31
+    w = max(900, n * 14) if scrollable else 760
     pad_l, pad_r, pad_t, pad_b = 52, 12, 46, 36
     plot_w = w - pad_l - pad_r
     plot_h = h - pad_t - pad_b
     vmax = max((v for _, v in rows), default=0)
     ticks = _ticks(vmax * 1.10)
     tmax = ticks[-1] or 1
-    n = len(rows)
 
     parts = [f'<text x="{pad_l}" y="18" font-family="{FONT}" font-size="15" '
              f'font-weight="bold" fill="{INK}">{esc(title)}</text>']
@@ -259,15 +281,19 @@ def chart_line(rows: Sequence[Tuple[str, float]], title: str,
         parts.append(f'<polyline class="line-draw" pathLength="1" points="{area}" fill="none" '
                      f'stroke="{BLUE}" stroke-width="2"/>')
         for (x, y), (label, v) in zip(pts, rows):
-            tip = esc(f"{label}\n{_fmt_full(v)}")
-            parts.append(f'<circle class="pt" cx="{x:.1f}" cy="{y:.1f}" r="2.4" fill="{INK}">'
-                         f'<title>{tip}</title></circle>')
-            # 透明大命中区，方便悬停查看
-            parts.append(f'<circle class="pt-hit" cx="{x:.1f}" cy="{y:.1f}" r="13" fill="transparent">'
-                         f'<title>{tip}</title></circle>')
-    # 横轴标签：边缘标签向内锚定避免被裁切
+            tip = f"{label}\n{_fmt_full(v)}"
+            parts.append(f'<circle class="pt" data-tip="{_tip_attr(tip)}" cx="{x:.1f}" cy="{y:.1f}" r="2.4" fill="{INK}">'
+                         f'<title>{esc(tip)}</title></circle>')
+            # 透明大命中区，方便悬停/点击查看
+            parts.append(f'<circle class="pt-hit" data-tip="{_tip_attr(tip)}" cx="{x:.1f}" cy="{y:.1f}" r="13" fill="transparent">'
+                         f'<title>{esc(tip)}</title></circle>')
+    # 横轴标签：按最小间隔抽样，边缘标签向内锚定避免重叠/裁切
+    step = max(1, n // 14)
+    label_idxs = set(range(0, n, step))
+    if n - 1 - max(label_idxs) >= step * 0.5:
+        label_idxs.add(n - 1)
     for i, (label, v) in enumerate(rows):
-        if n <= 14 or i % max(1, n // 14) == 0 or i == n - 1:
+        if i in label_idxs:
             x = pad_l + (plot_w * i / max(n - 1, 1))
             if i == 0:
                 anchor, tx = "start", pad_l + 10
@@ -277,7 +303,7 @@ def chart_line(rows: Sequence[Tuple[str, float]], title: str,
                 anchor, tx = "middle", x
             parts.append(f'<text x="{tx:.1f}" y="{pad_t + plot_h + 18}" text-anchor="{anchor}" '
                          f'font-family="{FONT}" font-size="9.5" fill="{INK_SOFT}">{esc(label)}</text>')
-    return _svg_wrap("".join(parts), w, h)
+    return _svg_wrap("".join(parts), w, h, scrollable)
 
 
 def chart_donut(items: Sequence[Tuple[str, float]], title: str,
@@ -305,9 +331,10 @@ def chart_donut(items: Sequence[Tuple[str, float]], title: str,
         path = (f"M {cx},{cy} L {x0:.1f},{y0:.1f} A {r},{r} 0 {large} 1 {x1:.1f},{y1:.1f} Z")
         color = palette[i % len(palette)]
         pct = frac * 100
-        parts.append(f'<path class="donut-seg" d="{path}" fill="{color}" opacity="0.92" '
-                     f'stroke="{PAPER}" stroke-width="1.5">'
-                     f'<title>{esc(f"{label}\n{_fmt_full(v)}（{pct:.1f}%）")}</title></path>')
+        tip = f"{label}\n{_fmt_full(v)}（{pct:.1f}%）"
+        parts.append(f'<path class="donut-seg" data-tip="{_tip_attr(tip)}" d="{path}" fill="{color}" '
+                     f'opacity="0.92" stroke="{PAPER}" stroke-width="1.5">'
+                     f'<title>{esc(tip)}</title></path>')
         start = ang
     # 中心文字（置于纸色圆盘上保证对比度）
     parts.append(f'<circle cx="{cx}" cy="{cy}" r="34" fill="{PAPER}" '
@@ -323,8 +350,10 @@ def chart_donut(items: Sequence[Tuple[str, float]], title: str,
     for i, (label, v) in enumerate(items[:8]):
         pct = v / total * 100
         color = palette[i % len(palette)]
-        parts.append(f'<rect x="{lx}" y="{ly + i * 20}" width="11" height="11" fill="{color}">'
-                     f'<title>{esc(f"{label}\n{_fmt_full(v)}（{pct:.1f}%）")}</title></rect>')
+        tip = f"{label}\n{_fmt_full(v)}（{pct:.1f}%）"
+        parts.append(f'<rect class="lg-sw" data-tip="{_tip_attr(tip)}" x="{lx}" y="{ly + i * 20}" '
+                     f'width="11" height="11" fill="{color}">'
+                     f'<title>{esc(tip)}</title></rect>')
         parts.append(f'<text x="{lx + 17}" y="{ly + i * 20 + 10}" font-family="{FONT}" font-size="11" '
                      f'fill="{INK}">{esc(label)[:22]}</text>')
         parts.append(f'<text x="{lx + 230}" y="{ly + i * 20 + 10}" font-family="{FONT}" font-size="11" '
@@ -351,9 +380,10 @@ def chart_hbar(items: Sequence[Tuple[str, float]], title: str,
         color = RED if i == 0 else INK
         parts.append(f'<text x="{pad_l - 8}" y="{y + 13}" text-anchor="end" font-family="{FONT}" '
                      f'font-size="11" fill="{INK}">{esc(label)[:28]}</text>')
-        parts.append(f'<rect class="h-bar" x="{pad_l}" y="{y}" width="{bw:.1f}" height="15" '
-                     f'fill="{color}" opacity="0.92">'
-                     f'<title>{esc(f"{label}\n{_fmt_full(v)}")}</title></rect>')
+        tip = f"{label}\n{_fmt_full(v)}"
+        parts.append(f'<rect class="h-bar" data-tip="{_tip_attr(tip)}" x="{pad_l}" y="{y}" width="{bw:.1f}" '
+                     f'height="15" fill="{color}" opacity="0.92">'
+                     f'<title>{esc(tip)}</title></rect>')
         parts.append(f'<text x="{pad_l + bw + 6:.1f}" y="{y + 13}" font-family="{FONT}" '
                      f'font-size="10.5" fill="{INK_SOFT}">{_fmt_num(v)}</text>')
     return _svg_wrap("".join(parts), w, h)
@@ -544,8 +574,21 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
                  margin: 2px 0; line-height: 1.15; white-space: nowrap; overflow: hidden;
                  text-overflow: clip; }}
       .stat-s {{ font-size: 9px; color: {INK_FAINT}; letter-spacing: 2px; }}
-      .fig {{ margin: 14px 0; border: 1px solid {GRAY1}; padding: 10px; background: {PAPER}; }}
+      .fig {{ margin: 14px 0; border: 1px solid {GRAY1}; padding: 10px; background: {PAPER};
+              overflow-x: auto; }}
       .fig svg {{ border-bottom: 1px dashed {GRAY1}; }}
+      .fig::-webkit-scrollbar {{ height: 8px; }}
+      .fig::-webkit-scrollbar-track {{ background: {PAPER2}; }}
+      .fig::-webkit-scrollbar-thumb {{ background: {GRAY2}; border-radius: 4px; }}
+      /* ---- 自绘提示气泡（悬停查看 / 点击钉住） ---- */
+      .dsu-tip {{ position: fixed; z-index: 999; max-width: 340px; padding: 8px 12px;
+                  background: #fffdf6; border: 1.5px solid {INK};
+                  box-shadow: 3px 3px 0 rgba(25,24,19,.22);
+                  font-family: {FONT}; font-size: 12.5px; line-height: 1.55;
+                  color: {INK}; white-space: pre-line; pointer-events: none;
+                  display: none; }}
+      .dsu-tip.pinned {{ border-color: {RED}; box-shadow: 3px 3px 0 rgba(163,59,46,.35); }}
+      .dsu-tip::before {{ content: "◆"; color: {RED}; margin-right: 6px; font-size: 10px; }}
       /* ---- 动效（报纸编辑部风格） ---- */
       @keyframes dsu-press {{ from {{ opacity: 0; letter-spacing: 2px; }} to {{ opacity: 1; letter-spacing: 8px; }} }}
       @keyframes dsu-fade-up {{ from {{ opacity: 0; transform: translateY(10px); }} to {{ opacity: 1; transform: none; }} }}
@@ -602,6 +645,61 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
         {esc(tr(lang, "report_footer", ver=meta.get("version", ""), now=now))}
       </div>
     </div>
+    <script>
+    (function(){{
+      // 自绘提示气泡：悬停查看；点击钉住（再点/Esc/点空白取消）；跟随鼠标
+      var tip = document.createElement('div');
+      tip.className = 'dsu-tip';
+      document.body.appendChild(tip);
+      var pinned = false;
+      function place(x, y){{
+        var r = tip.getBoundingClientRect();
+        var left = x + 14, top = y + 14;
+        if (left + r.width > window.innerWidth - 8) left = x - r.width - 14;
+        if (top + r.height > window.innerHeight - 8) top = y - r.height - 14;
+        tip.style.left = Math.max(6, left) + 'px';
+        tip.style.top = Math.max(6, top) + 'px';
+      }}
+      function show(el, x, y){{
+        tip.textContent = (el.getAttribute('data-tip') || '').replace(/\\\\n/g, '\\n');
+        tip.className = 'dsu-tip' + (pinned ? ' pinned' : '');
+        tip.style.display = 'block';
+        place(x, y);
+      }}
+      function hide(){{ tip.style.display = 'none'; }}
+      document.addEventListener('mouseover', function(e){{
+        var t = e.target.closest('[data-tip]');
+        if (t && !pinned) show(t, e.clientX, e.clientY);
+      }});
+      document.addEventListener('mousemove', function(e){{
+        if (tip.style.display !== 'none') place(e.clientX, e.clientY);
+      }});
+      document.addEventListener('click', function(e){{
+        var t = e.target.closest('[data-tip]');
+        if (t){{
+          pinned = !pinned;
+          if (pinned) show(t, e.clientX, e.clientY); else hide();
+          e.stopPropagation();
+        }} else if (pinned) {{
+          pinned = false; hide();
+        }}
+      }});
+      document.addEventListener('keydown', function(e){{
+        if (e.key === 'Escape' && pinned){{ pinned = false; hide(); }}
+      }});
+      // 移除原生 <title>，避免与自绘气泡重复提示
+      document.querySelectorAll('[data-tip] title').forEach(function(t){{ t.remove(); }});
+      // 滚轮横滑：图表内容超出容器宽度时，滚动轮改为水平滚动
+      document.querySelectorAll('.fig').forEach(function(fig){{
+        fig.addEventListener('wheel', function(e){{
+          if (fig.scrollWidth > fig.clientWidth + 2){{
+            fig.scrollLeft += e.deltaY;
+            e.preventDefault();
+          }}
+        }}, {{ passive: false }});
+      }});
+    }})();
+    </script>
     </body>
     </html>
     """

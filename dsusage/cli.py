@@ -20,9 +20,10 @@ EPILOG = """示例:
   dsu login                          # 交互式保存 userToken
   dsu check                          # 校验 Token 并显示账户余额
   dsu keys                           # 列出 API Key（trackingId / 名称）
-  dsu day --date 2026-07-01          # 单日小时级用量（CSV + Excel）
-  dsu range --start 2026-06-01 --end 2026-06-30 --granularity hourly
-  dsu range --start 2026-01-01 --end 2026-06-30 --include-raw   # 超长周期自动分片
+  dsu day --date 2026-07-01          # 单日小时级用量（Excel+CSV+报纸风HTML报告）
+  dsu go --start 2026-06-01 --end 2026-06-30           # 一键：全部格式+官方原始+自动打开报告
+  dsu go --start 2026-01-01 --end 2026-12-31 --granularity daily   # 全年一键
+  dsu range --start 2026-06-01 --end 2026-06-30 --granularity hourly --open
   dsu serve --port 8321              # 启动本地 Web 界面
 """
 
@@ -113,7 +114,9 @@ def _run_query(args) -> int:
     granularity = args.granularity
     if args.granularity == "auto" and start == end:
         granularity = "hourly"   # 单日默认小时级
-    formats = ["xlsx", "csv"] if args.format == "both" else [args.format]
+    formats = {"xlsx": ["xlsx"], "csv": ["csv"], "html": ["html"],
+               "both": ["xlsx", "csv"], "all": ["xlsx", "csv", "html"]}.get(
+        args.format, ["xlsx", "csv", "html"])
     api_key_ids = args.api_key.split(",") if args.api_key else None
     try:
         result = svc.run_export(
@@ -138,10 +141,15 @@ def _run_query(args) -> int:
     print(f"  请求数: {totals['requests']:,}  缓存命中: {totals['cache_hit']:,}  "
           f"缓存未命中: {totals['cache_miss']:,}  输出: {totals['response']:,}")
     print(f"  Token 合计: {totals['total_tokens']:,}  费用合计: {totals['cost']:.6f}")
-    for cat in ("xlsx", "csv", "raw", "meta"):
+    for cat in ("xlsx", "csv", "html", "raw", "meta"):
         if result["files"].get(cat):
             for f in result["files"][cat]:
                 print(f"  [{cat}] {f}")
+    if getattr(args, "open", False) and "html" in result["files"]:
+        import webbrowser
+        report = str(Path(result["out_dir"]) / result["files"]["html"][0])
+        print(f"  正在打开报告: {report}")
+        webbrowser.open("file:///" + report.replace("\\", "/").replace(" ", "%20"))
     return 0
 
 
@@ -149,6 +157,14 @@ def cmd_day(args) -> int:
     args.start = args.end = args.date
     if args.granularity == "auto":
         args.granularity = "hourly"
+    return _run_query(args)
+
+
+def cmd_go(args) -> int:
+    """一键导出：全部格式 + 官方原始数据 + 自动打开 HTML 报告。"""
+    args.format = "all"
+    args.include_raw = True
+    args.open = True
     return _run_query(args)
 
 
@@ -259,29 +275,43 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(sp)
     sp.set_defaults(func=cmd_keys)
 
-    sp = sub.add_parser("day", help="单日小时级用量导出")
+    sp = sub.add_parser("day", help="单日小时级用量导出（默认含报纸风 HTML 图表报告）")
     add_common(sp)
     sp.add_argument("--date", required=True, type=_parse_date, help="日期 YYYY-MM-DD")
     sp.add_argument("--tz", default="local", help="时区（+08:00 / 28800 / 8.0 / local）")
     sp.add_argument("--granularity", choices=["auto", "hourly", "daily"], default="auto")
-    sp.add_argument("--format", choices=["xlsx", "csv", "both"], default="both")
+    sp.add_argument("--format", choices=["xlsx", "csv", "html", "both", "all"], default="all",
+                    help="all = xlsx + csv + html 报告（默认）")
     sp.add_argument("--out", help="输出目录（默认 ./exports）")
     sp.add_argument("--include-raw", action="store_true", help="同时下载官方原始导出 CSV")
+    sp.add_argument("--open", action="store_true", help="导出后用浏览器打开 HTML 报告")
     sp.add_argument("--api-key", help="仅导出指定 trackingId（逗号分隔多个）")
     sp.set_defaults(func=cmd_day)
 
-    sp = sub.add_parser("range", help="日期范围导出（超 30 天自动分片）")
+    sp = sub.add_parser("range", help="日期范围导出（超 30 天自动分片，默认含 HTML 报告）")
     add_common(sp)
     sp.add_argument("--start", required=True, type=_parse_date, help="开始日期 YYYY-MM-DD")
     sp.add_argument("--end", required=True, type=_parse_date, help="结束日期 YYYY-MM-DD")
     sp.add_argument("--tz", default="local", help="时区（+08:00 / 28800 / 8.0 / local）")
     sp.add_argument("--granularity", choices=["auto", "hourly", "daily"], default="auto",
                     help="auto=按服务端粒度；hourly=逐日强制小时桶；daily=按天聚合")
-    sp.add_argument("--format", choices=["xlsx", "csv", "both"], default="both")
+    sp.add_argument("--format", choices=["xlsx", "csv", "html", "both", "all"], default="all",
+                    help="all = xlsx + csv + html 报告（默认）")
     sp.add_argument("--out", help="输出目录（默认 ./exports）")
     sp.add_argument("--include-raw", action="store_true", help="同时下载官方原始导出 CSV")
+    sp.add_argument("--open", action="store_true", help="导出后用浏览器打开 HTML 报告")
     sp.add_argument("--api-key", help="仅导出指定 trackingId（逗号分隔多个）")
     sp.set_defaults(func=_run_query)
+
+    sp = sub.add_parser("go", help="一键导出：全部格式 + 官方原始数据 + 自动打开 HTML 报告")
+    add_common(sp)
+    sp.add_argument("--start", required=True, type=_parse_date, help="开始日期 YYYY-MM-DD")
+    sp.add_argument("--end", required=True, type=_parse_date, help="结束日期 YYYY-MM-DD")
+    sp.add_argument("--tz", default="local", help="时区（+08:00 / 28800 / 8.0 / local）")
+    sp.add_argument("--granularity", choices=["auto", "hourly", "daily"], default="auto")
+    sp.add_argument("--out", help="输出目录（默认 ./exports）")
+    sp.add_argument("--api-key", help="仅导出指定 trackingId（逗号分隔多个）")
+    sp.set_defaults(func=cmd_go)
 
     sp = sub.add_parser("serve", help="启动本地 Web 界面")
     sp.add_argument("--host", default="127.0.0.1")

@@ -104,7 +104,10 @@ class Service:
                    include_raw: bool = False,
                    api_key_tracking_ids: Optional[List[str]] = None,
                    progress=None) -> Dict[str, Any]:
-        """执行一次完整导出，返回结果摘要 dict。"""
+        """执行一次完整导出，返回结果摘要 dict。
+
+        formats: xlsx / csv / html 的组合。
+        """
         formats = formats or ["xlsx"]
         ds = self.fetch(start, end, tz_sec, granularity, api_key_tracking_ids)
         tables = build_tables(ds)
@@ -135,7 +138,15 @@ class Service:
 
         out_dir = make_output_dir(out_dir or Path("exports"), start.isoformat(),
                                   end.isoformat(), tz_sec)
-        files = export_all(out_dir, tables, formats, meta, raw_files)
+        files = export_all(out_dir, tables, [f for f in formats if f != "html"], meta, raw_files)
+
+        if "html" in formats:
+            from .report import build_report
+            if progress:
+                progress("排版报纸风 HTML 图表报告")
+            report_path = build_report(ds, tables, totals,
+                                       out_path=out_dir / "report.html", meta=meta)
+            files.setdefault("html", []).append(report_path.name)
 
         return {
             "ok": True,

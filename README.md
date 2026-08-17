@@ -1,4 +1,4 @@
-# ds-usage-export（DeepSeek 用量导出工具）v1.0.1
+# ds-usage-export（DeepSeek 用量导出工具）v1.0.2
 
 解决 DeepSeek 开放平台用量后台（https://platform.deepseek.com/usage）的两个痛点：
 
@@ -6,7 +6,7 @@
 2. **后台时间跨度最多 30 天** —— 本工具自动按 ≤30 天窗口分片请求并合并，可导出任意历史周期（逐月、全年）。
 
 用户只需在 platform.deepseek.com **内部登录**（即已在浏览器登录），把登录态 userToken 粘贴进工具
-（或保存一次），即可查询、预览并一键导出 **CSV / Excel / 官方原始数据**。
+（或保存一次），即可查询、预览并一键导出 **CSV / Excel / 报纸风 HTML 图表报告 / 官方原始数据**。
 
 ---
 
@@ -15,15 +15,17 @@
 | 功能 | 说明 |
 |---|---|
 | 登录态复用 | 读取浏览器 `localStorage['userToken']`（提供控制台一行命令），保存到本机 `~/.dsusage/config.json`，CLI 与 Web 共用 |
+| 一键导出 | `dsu go --start X --end Y`：全部格式 + 官方原始数据 + 自动打开 HTML 报告 |
+| 报纸风 HTML 报告 | 自包含 `report.html`：报头 + 头版数据 + 内联 SVG 图表（每日费用 / Token 构成 / 小时走势 / 模型占比 / API Key 排名）+ 数据表，报纸编辑部排版 |
 | 小时级明细 | `hourly` 粒度：逐日请求（24h 窗口）强制平台返回小时桶，跨天合并为连续小时序列 |
 | 多粒度 | `auto`（单日=小时、多日=按服务端粒度）、`hourly`、`daily` |
 | 超长周期 | 任意范围自动按 ≤30 天分片抓取，去重合并 |
 | 官方原始数据 | 调用平台 `usage/export` 接口下载 ZIP，保留 `amount-*.csv` / `cost-*.csv` 原始文件 |
 | 多维度汇总 | 小时明细 / 每日明细 / 每日汇总 / 模型汇总 / API Key 汇总 / 费用明细（多币种） |
-| 导出格式 | Excel（多工作表，带样式与筛选）、CSV（utf-8-sig，Excel 直接打开）、meta.json 元信息 |
+| 导出格式 | Excel（多工作表）、CSV（utf-8-sig）、HTML 图表报告、meta.json |
 | API Key 筛选 | 按 trackingId 过滤指定 Key |
-| 命令行 + Web | `dsu` 子命令与本地 Web 界面（http://127.0.0.1:8321）双入口 |
-| 容错 | 429/5xx 自动退避重试；Token 失效明确提示 |
+| 命令行 + Web | `dsu` 子命令与本地 Web 界面（报纸编辑风，http://127.0.0.1:8321）双入口 |
+| 容错 | 429/5xx 自动退避重试；Token 失效明确提示；`dsu diagnose` 排查平台数据结构 |
 
 ## 快速开始
 
@@ -62,7 +64,10 @@ dsu login --token <粘贴的token>
 dsu check                  # 校验 Token，显示余额
 dsu keys                   # 列出 API Key（trackingId / 名称）
 
-# 单日小时级（默认 hourly）
+# ⭐ 一键导出：Excel+CSV+报纸风HTML报告+官方原始数据，并自动打开报告
+dsu go --start 2026-06-01 --end 2026-06-30
+
+# 单日小时级（默认 hourly，同样含 HTML 报告）
 dsu day --date 2026-07-01
 
 # 日期范围（默认 auto：单日=小时，多日=服务端粒度）
@@ -71,22 +76,22 @@ dsu range --start 2026-06-01 --end 2026-06-30
 # 强制小时级（逐日抓取，耗时随天数线性增长）
 dsu range --start 2026-06-01 --end 2026-06-30 --granularity hourly
 
-# 全年导出（自动分片，含官方原始 CSV）
-dsu range --start 2026-01-01 --end 2026-12-31 --granularity daily --include-raw
+# 全年导出（自动分片，含官方原始 CSV 与 HTML 报告）
+dsu go --start 2026-01-01 --end 2026-12-31 --granularity daily
 
-# 指定 API Key / 时区 / 输出目录 / 格式
+# 指定 API Key / 时区 / 输出目录 / 格式 / 只出 HTML 报告
 dsu range --start 2026-06-01 --end 2026-06-30 --api-key <trackingId> \
-          --tz +08:00 --format both --out ./my_exports
+          --tz +08:00 --format html --out ./my_exports
 ```
 
-### 4. Web 界面
+### 4. Web 界面（报纸编辑风）
 
 ```bash
 dsu serve                 # 默认 http://127.0.0.1:8321
 dsu serve --port 9000 --host 127.0.0.1
 ```
 
-页面内可：粘贴/验证 Token → 选择日期范围与粒度 → 获取预览 → 一键导出 → 下载文件 / 查看历史导出。
+页面内可：粘贴/验证 Token → 选择日期范围与粒度 → 获取预览 → 一键导出（含 HTML 图表报告）→ 下载文件 / 查看历史导出。
 
 ## 导出产物
 
@@ -94,6 +99,7 @@ dsu serve --port 9000 --host 127.0.0.1
 
 ```
 dsu_2026-06-01_2026-06-30_UTC+0800_20260701_120000/
+├── report.html           # ⭐ 报纸编辑风 HTML 图表报告（双击浏览器打开）
 ├── usage.xlsx            # Excel：导出信息 / 每日汇总 / 模型汇总 / API Key 汇总 / 费用明细 …
 ├── hourly_detail.csv     # 小时明细（hourly 粒度时）
 ├── daily_detail.csv      # 每日×模型×Key 明细
@@ -101,7 +107,7 @@ dsu_2026-06-01_2026-06-30_UTC+0800_20260701_120000/
 ├── model_summary.csv     # 模型汇总（含费用占比）
 ├── api_key_summary.csv   # API Key 汇总（含费用占比）
 ├── cost_detail.csv       # 费用明细（多币种）
-├── raw_amount-2026-06-01_2026-06-30.csv   # 官方原始 amount 导出（--include-raw）
+├── raw_amount-2026-06-01_2026-06-30.csv   # 官方原始 amount 导出（--include-raw / go）
 ├── raw_cost-*.csv                          # 官方原始 cost 导出
 └── meta.json             # 导出元信息（范围/时区/粒度/汇总/时间）
 ```
@@ -120,8 +126,10 @@ ds-usage-export/
 │   ├── exporters.py      # xlsx / csv / raw / meta 写出
 │   ├── service.py        # 编排：分片抓取、官方原始合并、导出
 │   ├── cli.py            # 命令行
-│   ├── webapp.py         # Flask Web 界面
+│   ├── webapp.py         # Flask Web 界面（报纸编辑风）
+│   ├── report.py         # 报纸风 HTML 图表报告生成器（内联 SVG）
 │   └── web/static/index.html
+├── examples/report_demo.html   # 合成数据生成的示例报告
 ├── tests/                # 单元测试（合成数据，无需真实 Token）
 └── docs/
     ├── api-notes.md      # 平台内部 API 调研笔记
@@ -146,8 +154,10 @@ python -m unittest discover -s tests -v
 
 ## 版本历史
 
-- **v1.0.1**（当前）首版：登录态复用、小时/日/多维度查询、CSV/Excel/官方原始导出、
-  超 30 天自动分片、API Key 筛选、CLI + Web 双入口。详见 [CHANGELOG.md](CHANGELOG.md)。
+- **v1.0.2**（当前）：一键导出 `dsu go`、报纸编辑风 HTML 图表报告、Web 界面报纸风改版、
+  `api_key` 对象结构兼容修复。详见 [CHANGELOG.md](CHANGELOG.md)。
+- **v1.0.1**：首版：登录态复用、小时/日/多维度查询、CSV/Excel/官方原始导出、
+  超 30 天自动分片、API Key 筛选、CLI + Web 双入口。
 
 ## 免责声明
 

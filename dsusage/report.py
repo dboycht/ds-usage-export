@@ -56,26 +56,6 @@ def _svg_wrap(inner: str, w: int, h: int, scrollable: bool = False) -> str:
             f'xmlns="http://www.w3.org/2000/svg" style="{style}">{inner}</svg>')
 
 
-def _ticks(vmax: float, n: int = 4) -> List[float]:
-    """生成 0 起的「好看」刻度，且保证末档 >= vmax（数据永不超出轴上界）。"""
-    if vmax <= 0:
-        return [0.0]
-    import math
-    step = vmax / max(n, 1)
-    mag = 10 ** math.floor(math.log10(step or 1))
-    norm = step / mag
-    nice = mag * (1 if norm <= 1 else 2 if norm <= 2 else 2.5 if norm <= 2.5 else
-                  5 if norm <= 5 else 10)
-    ticks: List[float] = [0.0]
-    v = nice
-    while v < vmax - 1e-9:
-        ticks.append(round(v, 6))
-        v += nice
-    if ticks[-1] < vmax - 1e-9:
-        ticks.append(round(v, 6))
-    return ticks
-
-
 def _fmt_num(v: float) -> str:
     if v >= 1e9:
         return f"{v / 1e9:.1f}B"
@@ -97,213 +77,33 @@ def _fmt_full(v: float) -> str:
     return f"{v:,.6f}".rstrip("0").rstrip(".") if abs(v) < 1 else f"{v:,.4f}".rstrip("0").rstrip(".")
 
 
-def _nice_round(v: float) -> float:
-    if v >= 1000:
-        return round(v)
-    if v >= 100:
-        return round(v, 1)
-    return round(v, 3)
+def _interactive_chart_fig(cfg: dict, lang: str) -> str:
+    """时间序列交互图：内嵌数据 JSON，由 JS 引擎渲染（柱/线切换、时间轴缩放、点击钉住）。"""
+    import json as _json
+    tools = (f'<button class="mode-bar active" title="{esc(tr(lang, "mode_bar"))}">▮</button>'
+             f'<button class="mode-line" title="{esc(tr(lang, "mode_line"))}">〰</button>'
+             f'<span class="tool-gap"></span>'
+             f'<button class="z-out" title="{esc(tr(lang, "zoom_out"))}">−</button>'
+             f'<button class="z-in" title="{esc(tr(lang, "zoom_in"))}">＋</button>'
+             f'<button class="z-reset" title="{esc(tr(lang, "zoom_reset"))}">↺</button>')
+    data = _json.dumps(cfg, ensure_ascii=False).replace("</", "<\\/")
+    return (f'<div class="fig dsu-chart-fig"><div class="fig-tools">{tools}</div>'
+            f'<script type="application/json" class="dsu-chart-data">{data}</script>'
+            f'<div class="dsu-chart"></div></div>')
 
 
-def chart_bar(rows: Sequence[Tuple[str, float]], title: str,
-              ylabel: str = "", h: int = 250, max_bars: int = 31) -> str:
-    """竖向柱状图；项数过多时自动转为折线图；数据点多时加宽并支持滚轮横滑。"""
-    if len(rows) > max_bars:
-        return chart_line(rows, title, ylabel, h=h)
-    n = len(rows)
-    scrollable = n > 18
-    w = max(900, n * 34) if scrollable else 760
-    pad_l, pad_r, pad_t, pad_b = 52, 12, 46, 36
-    plot_w = w - pad_l - pad_r
-    plot_h = h - pad_t - pad_b
-    vmax = max((v for _, v in rows), default=0)
-    ticks = _ticks(vmax * 1.10)   # 顶部留出数值标签空间，且刻度上界始终覆盖数据
-    tmax = ticks[-1] or 1
-
-    parts = [f'<text x="{pad_l}" y="18" font-family="{FONT}" font-size="15" '
-             f'font-weight="bold" fill="{INK}">{esc(title)}</text>']
-    if ylabel:
-        parts.append(f'<text x="{w - pad_r}" y="33" text-anchor="end" font-family="{FONT}" font-size="11" '
-                     f'fill="{INK_FAINT}">{esc(ylabel)}</text>')
-    # 网格与纵轴刻度
-    for t in ticks:
-        y = pad_t + plot_h - (t / tmax) * plot_h
-        parts.append(f'<line x1="{pad_l}" y1="{y:.1f}" x2="{w - pad_r}" y2="{y:.1f}" '
-                     f'stroke="{GRAY1}" stroke-width="0.6" stroke-dasharray="2 3"/>')
-        parts.append(f'<text x="{pad_l - 6}" y="{y + 4:.1f}" text-anchor="end" '
-                     f'font-family="{FONT}" font-size="10" fill="{INK_FAINT}">{_fmt_num(t)}</text>')
-    # 坐标轴
-    parts.append(f'<line x1="{pad_l}" y1="{pad_t + plot_h}" x2="{w - pad_r}" y2="{pad_t + plot_h}" '
-                 f'stroke="{INK}" stroke-width="1.4"/>')
-    slot = plot_w / n
-    bar_w = min(slot * 0.62, 26)
-    step = max(1, n // 12)
-    label_idxs = set(range(0, n, step))
-    if n - 1 - max(label_idxs) >= step * 0.5:
-        label_idxs.add(n - 1)
-    for i, (label, v) in enumerate(rows):
-        bh = (v / tmax) * plot_h if v > 0 else 0
-        x = pad_l + slot * i + (slot - bar_w) / 2
-        y = pad_t + plot_h - bh
-        color = RED if i == len(rows) - 1 else INK
-        tip = f"{label}\n{_fmt_full(v)}" + (f"（{ylabel or '费用'}）" if ylabel else "")
-        parts.append(f'<rect class="v-bar" data-tip="{_tip_attr(tip)}" x="{x:.1f}" y="{y:.1f}" '
-                     f'width="{bar_w:.1f}" height="{max(bh, 0):.1f}" fill="{color}" opacity="0.92">'
-                     f'<title>{esc(tip)}</title></rect>')
-        if bh > 20 and not scrollable:
-            ly = max(y - 4, pad_t + 12)
-            parts.append(f'<text x="{x + bar_w / 2:.1f}" y="{ly:.1f}" text-anchor="middle" '
-                         f'font-family="{FONT}" font-size="9" fill="{INK}">{_fmt_num(v)}</text>')
-        # 横轴标签：按最小间隔抽样，边缘标签向内锚定避免重叠/裁切
-        if i in label_idxs:
-            cx = x + bar_w / 2
-            if i == 0:
-                anchor, tx = "start", pad_l + 10
-            elif i == n - 1:
-                anchor, tx = "end", w - pad_r - 4
-            else:
-                anchor, tx = "middle", cx
-            parts.append(f'<text x="{tx:.1f}" y="{pad_t + plot_h + 18}" text-anchor="{anchor}" '
-                         f'font-family="{FONT}" font-size="9.5" fill="{INK_SOFT}">{esc(label)}</text>')
-    return _svg_wrap("".join(parts), w, h, scrollable)
-
-
-def chart_stacked(rows: Sequence[Tuple[str, float, float, float]], title: str,
-                  h: int = 288, max_bars: int = 31, lang: Optional[str] = None) -> str:
-    """堆叠柱状图：每项 (label, a, b, c) → 缓存命中 / 缓存未命中 / 输出。"""
-    lang = lang or current_lang()
-    hit_name = tr(lang, "legend_hit")
-    miss_name = tr(lang, "legend_miss")
-    out_name = tr(lang, "legend_output")
-    if len(rows) > max_bars:
-        return chart_line([(l, a + b + c) for l, a, b, c in rows], title, tr(lang, "tokens_total"), h=h)
-    n = len(rows)
-    scrollable = n > 18
-    w = max(900, n * 34) if scrollable else 760
-    pad_l, pad_r, pad_t, pad_b = 52, 12, 46, 58
-    plot_w = w - pad_l - pad_r
-    plot_h = h - pad_t - pad_b
-    vmax = max((a + b + c for _, a, b, c in rows), default=0)
-    ticks = _ticks(vmax * 1.10)
-    tmax = ticks[-1] or 1
-    colors = (GRAY1, GRAY2, INK)
-
-    parts = [f'<text x="{pad_l}" y="18" font-family="{FONT}" font-size="15" '
-             f'font-weight="bold" fill="{INK}">{esc(title)}</text>']
-    for t in ticks:
-        y = pad_t + plot_h - (t / tmax) * plot_h
-        parts.append(f'<line x1="{pad_l}" y1="{y:.1f}" x2="{w - pad_r}" y2="{y:.1f}" '
-                     f'stroke="{GRAY1}" stroke-width="0.6" stroke-dasharray="2 3"/>')
-        parts.append(f'<text x="{pad_l - 6}" y="{y + 4:.1f}" text-anchor="end" '
-                     f'font-family="{FONT}" font-size="10" fill="{INK_FAINT}">{_fmt_num(t)}</text>')
-    parts.append(f'<line x1="{pad_l}" y1="{pad_t + plot_h}" x2="{w - pad_r}" y2="{pad_t + plot_h}" '
-                 f'stroke="{INK}" stroke-width="1.4"/>')
-    n = len(rows)
-    slot = plot_w / n
-    bar_w = min(slot * 0.62, 26)
-    step = max(1, n // 12)
-    label_idxs = set(range(0, n, step))
-    if n - 1 - max(label_idxs) >= step * 0.5:
-        label_idxs.add(n - 1)
-    for i, (label, a, b, c) in enumerate(rows):
-        x = pad_l + slot * i + (slot - bar_w) / 2
-        y = pad_t + plot_h
-        seg_detail = (f"{hit_name} {_fmt_full(a)} · {miss_name} {_fmt_full(b)} · {out_name} {_fmt_full(c)}\n"
-                      f"{tr(lang, 'tokens_total')} {_fmt_full(a + b + c)}")
-        for v, color, name in ((c, colors[2], out_name), (b, colors[1], miss_name),
-                               (a, colors[0], hit_name)):
-            bh = (v / tmax) * plot_h if v > 0 else 0
-            if bh > 0:
-                tip = f"{label} · {name} {_fmt_full(v)}\n{seg_detail}"
-                parts.append(f'<rect class="v-bar" data-tip="{_tip_attr(tip)}" x="{x:.1f}" y="{y - bh:.1f}" '
-                             f'width="{bar_w:.1f}" height="{bh:.1f}" fill="{color}" opacity="0.94">'
-                             f'<title>{esc(tip)}</title></rect>')
-                y -= bh
-        # 横轴标签：按最小间隔抽样，边缘标签向内锚定避免重叠/裁切
-        if i in label_idxs:
-            cx = x + bar_w / 2
-            if i == 0:
-                anchor, tx = "start", pad_l + 10
-            elif i == n - 1:
-                anchor, tx = "end", w - pad_r - 4
-            else:
-                anchor, tx = "middle", cx
-            parts.append(f'<text x="{tx:.1f}" y="{pad_t + plot_h + 18}" text-anchor="{anchor}" '
-                         f'font-family="{FONT}" font-size="9.5" fill="{INK_SOFT}">{esc(label)}</text>')
-    legend = ("<g font-family='%s' font-size='10' fill='%s'>" % (FONT, INK_SOFT)
-              + "".join(
-                  f'<rect x="{72 + i * 150}" y="{h - 26}" width="10" height="10" fill="{colors[i]}">'
-                  f'<title>{esc(name)}</title></rect>'
-                  f'<text x="{86 + i * 150}" y="{h - 17}">{name}</text>'
-                  for i, name in enumerate((hit_name, miss_name, out_name)))
-              + "</g>")
-    parts.append(legend)
-    return _svg_wrap("".join(parts), w, h, scrollable)
-
-
-def chart_line(rows: Sequence[Tuple[str, float]], title: str,
-               ylabel: str = "", h: int = 250) -> str:
-    """折线 + 面积图（长周期时间序列）；数据点多时加宽并支持滚轮横滑。"""
-    n = len(rows)
-    scrollable = n > 31
-    w = max(900, n * 14) if scrollable else 760
-    pad_l, pad_r, pad_t, pad_b = 52, 12, 46, 36
-    plot_w = w - pad_l - pad_r
-    plot_h = h - pad_t - pad_b
-    vmax = max((v for _, v in rows), default=0)
-    ticks = _ticks(vmax * 1.10)
-    tmax = ticks[-1] or 1
-
-    parts = [f'<text x="{pad_l}" y="18" font-family="{FONT}" font-size="15" '
-             f'font-weight="bold" fill="{INK}">{esc(title)}</text>']
-    if ylabel:
-        parts.append(f'<text x="{w - pad_r}" y="33" text-anchor="end" font-family="{FONT}" font-size="11" '
-                     f'fill="{INK_FAINT}">{esc(ylabel)}</text>')
-    for t in ticks:
-        y = pad_t + plot_h - (t / tmax) * plot_h
-        parts.append(f'<line x1="{pad_l}" y1="{y:.1f}" x2="{w - pad_r}" y2="{y:.1f}" '
-                     f'stroke="{GRAY1}" stroke-width="0.6" stroke-dasharray="2 3"/>')
-        parts.append(f'<text x="{pad_l - 6}" y="{y + 4:.1f}" text-anchor="end" '
-                     f'font-family="{FONT}" font-size="10" fill="{INK_FAINT}">{_fmt_num(t)}</text>')
-    parts.append(f'<line x1="{pad_l}" y1="{pad_t + plot_h}" x2="{w - pad_r}" y2="{pad_t + plot_h}" '
-                 f'stroke="{INK}" stroke-width="1.4"/>')
-
-    pts: List[Tuple[float, float]] = []
-    for i, (label, v) in enumerate(rows):
-        x = pad_l + (plot_w * i / max(n - 1, 1))
-        y = pad_t + plot_h - (v / tmax) * plot_h
-        pts.append((x, y))
-    if n > 1 and vmax > 0:
-        area = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
-        poly = f"M {pts[0][0]:.1f},{pad_t + plot_h} L " + " L ".join(
-            f"{x:.1f},{y:.1f}" for x, y in pts) + f" L {pts[-1][0]:.1f},{pad_t + plot_h} Z"
-        parts.append(f'<polygon class="area-fade" points="{poly}" fill="{BLUE}" opacity="0.10"/>')
-        parts.append(f'<polyline class="line-draw" pathLength="1" points="{area}" fill="none" '
-                     f'stroke="{BLUE}" stroke-width="2"/>')
-        for (x, y), (label, v) in zip(pts, rows):
-            tip = f"{label}\n{_fmt_full(v)}"
-            parts.append(f'<circle class="pt" data-tip="{_tip_attr(tip)}" cx="{x:.1f}" cy="{y:.1f}" r="2.4" fill="{INK}">'
-                         f'<title>{esc(tip)}</title></circle>')
-            # 透明大命中区，方便悬停/点击查看
-            parts.append(f'<circle class="pt-hit" data-tip="{_tip_attr(tip)}" cx="{x:.1f}" cy="{y:.1f}" r="13" fill="transparent">'
-                         f'<title>{esc(tip)}</title></circle>')
-    # 横轴标签：按最小间隔抽样，边缘标签向内锚定避免重叠/裁切
-    step = max(1, n // 14)
-    label_idxs = set(range(0, n, step))
-    if n - 1 - max(label_idxs) >= step * 0.5:
-        label_idxs.add(n - 1)
-    for i, (label, v) in enumerate(rows):
-        if i in label_idxs:
-            x = pad_l + (plot_w * i / max(n - 1, 1))
-            if i == 0:
-                anchor, tx = "start", pad_l + 10
-            elif i == n - 1:
-                anchor, tx = "end", w - pad_r - 4
-            else:
-                anchor, tx = "middle", x
-            parts.append(f'<text x="{tx:.1f}" y="{pad_t + plot_h + 18}" text-anchor="{anchor}" '
-                         f'font-family="{FONT}" font-size="9.5" fill="{INK_SOFT}">{esc(label)}</text>')
-    return _svg_wrap("".join(parts), w, h, scrollable)
+def _ts_chart_cfg(title: str, ylabel: str, stacked: bool, lang: str,
+                  tz_sec: int, hourly: bool,
+                  series: Sequence[dict]) -> dict:
+    """构造交互图配置。series 项: {"name","color","points":[(t,v),...]}，t 为 UTC 秒。"""
+    return {
+        "title": title, "ylabel": ylabel, "stacked": stacked,
+        "mode": "bar", "lang": lang, "tz": tz_sec, "hourly": hourly,
+        "series": [{"name": s["name"], "color": s["color"],
+                    "points": [{"t": int(t), "v": round(float(v), 6)}
+                               for t, v in s["points"]]}
+                   for s in series],
+    }
 
 
 def chart_donut(items: Sequence[Tuple[str, float]], title: str,
@@ -321,20 +121,26 @@ def chart_donut(items: Sequence[Tuple[str, float]], title: str,
         frac = v / total
         if frac <= 0:
             continue
-        ang = start + 360 * frac
-        a0, a1 = start, ang
-        x0 = cx + r * _cos(a0)
-        y0 = cy + r * _sin(a0)
-        x1 = cx + r * _cos(a1)
-        y1 = cy + r * _sin(a1)
-        large = 1 if (a1 - a0) > 180 else 0
-        path = (f"M {cx},{cy} L {x0:.1f},{y0:.1f} A {r},{r} 0 {large} 1 {x1:.1f},{y1:.1f} Z")
         color = palette[i % len(palette)]
         pct = frac * 100
         tip = f"{label}\n{_fmt_full(v)}（{pct:.1f}%）"
-        parts.append(f'<path class="donut-seg" data-tip="{_tip_attr(tip)}" d="{path}" fill="{color}" '
-                     f'opacity="0.92" stroke="{PAPER}" stroke-width="1.5">'
-                     f'<title>{esc(tip)}</title></path>')
+        ang = start + 360 * frac
+        if frac >= 0.99999:
+            # 单一项占满整圆：路径退化（起点==终点）→ 直接用 circle
+            parts.append(f'<circle class="donut-seg" data-tip="{_tip_attr(tip)}" cx="{cx}" cy="{cy}" '
+                         f'r="{r}" fill="{color}" opacity="0.92" stroke="{PAPER}" stroke-width="1.5">'
+                         f'<title>{esc(tip)}</title></circle>')
+        else:
+            a0, a1 = start, ang
+            x0 = cx + r * _cos(a0)
+            y0 = cy + r * _sin(a0)
+            x1 = cx + r * _cos(a1)
+            y1 = cy + r * _sin(a1)
+            large = 1 if (a1 - a0) > 180 else 0
+            path = (f"M {cx},{cy} L {x0:.1f},{y0:.1f} A {r},{r} 0 {large} 1 {x1:.1f},{y1:.1f} Z")
+            parts.append(f'<path class="donut-seg" data-tip="{_tip_attr(tip)}" d="{path}" fill="{color}" '
+                         f'opacity="0.92" stroke="{PAPER}" stroke-width="1.5">'
+                         f'<title>{esc(tip)}</title></path>')
         start = ang
     # 中心文字（置于纸色圆盘上保证对比度）
     parts.append(f'<circle cx="{cx}" cy="{cy}" r="34" fill="{PAPER}" '
@@ -419,27 +225,6 @@ def _series_by_time(ds: UsageDataset) -> Dict[int, Dict[str, float]]:
     return out
 
 
-def _ts_rows(ds: UsageDataset, key: str,
-             series: Optional[Dict[int, Dict[str, float]]] = None,
-             lang: Optional[str] = None) -> List[Tuple[str, float]]:
-    lang = lang or current_lang()
-    series = series if series is not None else _series_by_time(ds)
-    hourly = ds.bucket_sec == HOUR_SEC
-    if hourly:
-        fmt = "%m-%d %H时" if lang == "zh" else "%m-%d %Hh"
-    else:
-        fmt = "%m-%d"
-    rows = []
-    for t in sorted(series):
-        local = sec_to_local_dt(t, ds.tz_sec)
-        rows.append((local.strftime(fmt), round(series[t][key], 6)))
-    return rows
-
-
-# ---------------------------------------------------------------------------
-# 报告组装
-# ---------------------------------------------------------------------------
-
 def _table_html(table: ExportTable, lang: str, max_rows: int = 100) -> str:
     cols = [tr_col(lang, c) for c in table.columns]
     head = "".join(f"<th>{esc(c)}</th>" for c in cols)
@@ -474,14 +259,13 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
     title = title or tr(lang, "report_title")
     html_lang = "zh-CN" if lang == "zh" else "en"
 
-    # ---- 数据准备 ----
+    # ---- 数据准备（时间序列：UTC 秒 → 数值）----
     series_by_t = _series_by_time(ds)
-    cost_rows = _ts_rows(ds, "cost", series_by_t, lang)
-    token_rows = _ts_rows(ds, "tokens", series_by_t, lang)
-    stacked = []
-    for t in sorted(series_by_t):
-        s = series_by_t[t]
-        stacked.append((_ts_label(ds, t, lang), s["hit"], s["miss"], s["response"]))
+    ts_sorted = sorted(series_by_t)
+    cost_rows = [(t, series_by_t[t]["cost"]) for t in ts_sorted]
+    token_rows = [(t, series_by_t[t]["tokens"]) for t in ts_sorted]
+    stacked = [(t, series_by_t[t]["hit"], series_by_t[t]["miss"], series_by_t[t]["response"])
+               for t in ts_sorted]
     # 模型/Key 汇总（费用）
     model_t = next((t for t in tables if t.name == "model_summary"), None)
     key_t = next((t for t in tables if t.name == "api_key_summary"), None)
@@ -498,23 +282,32 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
     ]
 
     charts: List[str] = []
-    zoom_tools = (f'<button class="z-out" title="{esc(tr(lang, "zoom_out"))}">−</button>'
-                  f'<button class="z-in" title="{esc(tr(lang, "zoom_in"))}">＋</button>'
-                  f'<button class="z-reset" title="{esc(tr(lang, "zoom_reset"))}">↺</button>')
-
-    def _fig(svg_html: str) -> str:
-        return f'<div class="fig"><div class="fig-tools">{zoom_tools}</div>{svg_html}</div>'
-
+    # 交互式时间序列图：柱/线可切换（默认柱状），时间轴缩放，点击钉住
     if cost_rows and any(v > 0 for _, v in cost_rows):
-        charts.append(_fig(chart_bar(cost_rows, tr(lang, "chart_daily_cost"), tr(lang, "cost_total"))))
+        cfg = _ts_chart_cfg(tr(lang, "chart_daily_cost"), tr(lang, "cost_total"), False, lang,
+                            ds.tz_sec, hourly,
+                            [{"name": tr(lang, "cost_total"), "color": INK, "points": cost_rows}])
+        charts.append(_interactive_chart_fig(cfg, lang))
     if stacked and any(a + b + c > 0 for _, a, b, c in stacked):
-        charts.append(_fig(chart_stacked(stacked, tr(lang, "chart_daily_tokens"), lang=lang)))
+        cfg = _ts_chart_cfg(tr(lang, "chart_daily_tokens"), tr(lang, "tokens_total"), True, lang,
+                            ds.tz_sec, hourly,
+                            [{"name": tr(lang, "legend_hit"), "color": GRAY1,
+                              "points": [(t, a) for t, a, _, _ in stacked]},
+                             {"name": tr(lang, "legend_miss"), "color": GRAY2,
+                              "points": [(t, b) for t, _, b, _ in stacked]},
+                             {"name": tr(lang, "legend_output"), "color": INK,
+                              "points": [(t, c) for t, _, _, c in stacked]}])
+        charts.append(_interactive_chart_fig(cfg, lang))
     if hourly and token_rows:
-        charts.append(_fig(chart_line(token_rows, tr(lang, "chart_hourly_tokens"), "Token")))
+        cfg = _ts_chart_cfg(tr(lang, "chart_hourly_tokens"), "Token", False, lang,
+                            ds.tz_sec, hourly,
+                            [{"name": tr(lang, "tokens_total"), "color": BLUE, "points": token_rows}])
+        charts.append(_interactive_chart_fig(cfg, lang))
+    # 静态图：环形 / 横向条形
     if model_items:
-        charts.append(_fig(chart_donut(model_items, tr(lang, "chart_model_share"), lang=lang)))
+        charts.append(f'<div class="fig">{chart_donut(model_items, tr(lang, "chart_model_share"), lang=lang)}</div>')
     if key_items:
-        charts.append(_fig(chart_hbar(key_items, tr(lang, "chart_key_rank"))))
+        charts.append(f'<div class="fig">{chart_hbar(key_items, tr(lang, "chart_key_rank"))}</div>')
 
     # ---- 数据表 ----
     tables_html = []
@@ -587,14 +380,17 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
       .fig::-webkit-scrollbar {{ height: 8px; }}
       .fig::-webkit-scrollbar-track {{ background: {PAPER2}; }}
       .fig::-webkit-scrollbar-thumb {{ background: {GRAY2}; border-radius: 4px; }}
-      /* ---- 缩放工具条与动画 ---- */
+      /* ---- 图表工具条：柱/线切换 + 缩放控件 ---- */
       .fig-tools {{ display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 6px; }}
       .fig-tools button {{ background: {PAPER}; border: 1px solid {INK_SOFT}; color: {INK};
                            font-family: {FONT}; font-size: 13px; line-height: 1;
                            padding: 4px 11px; cursor: pointer; }}
       .fig-tools button:hover {{ background: {INK}; color: {PAPER}; }}
-      svg.fig-zoom {{ transform-origin: 0 0; transition: transform .25s ease;
-                      will-change: transform; }}
+      .fig-tools button.active {{ background: {INK}; color: {PAPER}; }}
+      .fig-tools .tool-gap {{ flex: 1; }}
+      .dsu-chart {{ min-height: 60px; }}
+      .dsu-chart svg {{ display: block; max-width: 760px; height: auto; background: {PAPER};
+                        border-bottom: 1px dashed {GRAY1}; }}
       /* ---- 自绘提示气泡（悬停查看 / 点击钉住） ---- */
       .dsu-tip {{ position: fixed; z-index: 999; max-width: 340px; padding: 8px 12px;
                   background: #fffdf6; border: 1.5px solid {INK};
@@ -706,42 +502,224 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
       }});
       // 移除原生 <title>，避免与自绘气泡重复提示
       document.querySelectorAll('[data-tip] title').forEach(function(t){{ t.remove(); }});
-      // 图表缩放：滚轮以鼠标为锚点放大/缩小（带动效）；控件 ＋/−/↺；放大后可拖拽平移
-      document.querySelectorAll('.fig').forEach(function(fig){{
-        var svg = fig.querySelector('svg');
-        var scale = 1;
-        function setScale(s, ox, oy){{
-          s = Math.min(6, Math.max(1, s));
-          if (ox != null) svg.style.transformOrigin = ox + 'px ' + oy + 'px';
-          svg.style.transform = 'scale(' + s + ')';
-          scale = s;
+      // ---- 时间序列交互图引擎：柱/线切换（默认柱状）、时间轴缩放、分桶聚合、拖拽平移 ----
+      function dsuEsc(s){{ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }}
+      function dsuEscAttr(s){{ return dsuEsc(s).replace(/"/g,'&quot;'); }}
+      function dsuFmt(v){{
+        if (v >= 1e9) return (v/1e9).toFixed(1)+'B';
+        if (v >= 1e6) return (v/1e6).toFixed(1)+'M';
+        if (v >= 1e4) return (v/1e3).toFixed(0)+'K';
+        if (v >= 1000) return (v/1e3).toFixed(1)+'K';
+        if (v >= 100 || v === Math.round(v)) return v.toFixed(0);
+        if (v < 1 && v !== 0) return (Math.round(v * 10000) / 10000).toFixed(4).replace(/0+$/, '').replace(/\\.$/, '');
+        return v.toFixed(2);
+      }}
+      function dsuFmtFull(v){{ return Number(v).toLocaleString('en-US', {{ maximumFractionDigits: 6 }}); }}
+      function dsuNiceTicks(vmax){{
+        if (vmax <= 0) return [0];
+        var step = vmax / 4, mag = Math.pow(10, Math.floor(Math.log10(step || 1))), norm = step / mag;
+        var nice = mag * (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10);
+        var out = [0], v = nice;
+        while (v < vmax - 1e-9) {{ out.push(Math.round(v*1e6)/1e6); v += nice; }}
+        if (out[out.length-1] < vmax - 1e-9) out.push(Math.round(v*1e6)/1e6);
+        return out;
+      }}
+      function dsuTimeLabel(t, tz, lang, span){{
+        var d = new Date((t + tz) * 1000);
+        var mm = ('0' + (d.getUTCMonth() + 1)).slice(-2), dd = ('0' + d.getUTCDate()).slice(-2),
+            hh = ('0' + d.getUTCHours()).slice(-2);
+        if (span <= 3 * 86400) return (lang === 'zh' ? mm + '-' + dd + ' ' + hh + '时' : mm + '-' + dd + ' ' + hh + 'h');
+        return mm + '-' + dd;
+      }}
+      document.querySelectorAll('.fig.dsu-chart-fig').forEach(function(fig){{
+        var data = JSON.parse(fig.querySelector('.dsu-chart-data').textContent);
+        var host = fig.querySelector('.dsu-chart');
+        var FONT = "Georgia,'Times New Roman','Songti SC',serif";
+        var INK = '#191813', INK_SOFT = '#4a463c', INK_FAINT = '#8a8172', GRAY1 = '#c9c0aa', PAPER = '#f7f2e4';
+        var tmin = Infinity, tmax = -Infinity;
+        data.series.forEach(function(s){{ s.points.forEach(function(p){{ if (p.t < tmin) tmin = p.t; if (p.t > tmax) tmax = p.t; }}); }});
+        if (!isFinite(tmin)) tmin = 0; if (!isFinite(tmax)) tmax = tmin + 86400;
+        var full = [tmin, tmax], win = [tmin, tmax];
+        var mode = 'bar';
+        var W = 760, H = data.stacked ? 288 : 250;
+        var padL = 52, padR = 12, padT = 46, padB = data.stacked ? 58 : 36;
+        var plotW = W - padL - padR, plotH = H - padT - padB;
+        var anim = null;
+        function clampWin(a, b){{
+          var fw = full[1] - full[0];
+          var w = b - a;
+          if (w > fw) return [full[0], full[1]];
+          if (w < fw / 60) w = fw / 60;
+          if (a < full[0]) {{ a = full[0]; b = a + w; }}
+          if (b > full[1]) {{ b = full[1]; a = b - w; }}
+          return [a, b];
         }}
+        function animateTo(nw){{
+          var from = [win[0], win[1]], to = clampWin(nw[0], nw[1]);
+          if (anim) cancelAnimationFrame(anim);
+          var t0 = Date.now(), dur = 180;
+          function frame(){{
+            var k = Math.min(1, (Date.now() - t0) / dur);
+            var e = 1 - Math.pow(1 - k, 3);
+            win = [from[0] + (to[0] - from[0]) * e, from[1] + (to[1] - from[1]) * e];
+            render();
+            if (k < 1) anim = requestAnimationFrame(frame); else anim = null;
+          }}
+          frame();
+        }}
+        function binItems(){{
+          var pts = [];
+          data.series.forEach(function(s){{ s.points.forEach(function(p){{ if (p.t >= win[0] - 1 && p.t <= win[1] + 1) pts.push(p.t); }}); }});
+          pts.sort(function(a, b){{ return a - b; }});
+          var uniq = []; pts.forEach(function(t){{ if (!uniq.length || uniq[uniq.length-1] !== t) uniq.push(t); }});
+          var maxBars = Math.max(3, Math.floor(plotW / 4));
+          if (uniq.length <= maxBars){{
+            return uniq.map(function(t){{
+              var idx = data.series.map(function(s){{
+                for (var i = 0; i < s.points.length; i++) if (s.points[i].t === t) return s.points[i].v;
+                return 0;
+              }});
+              return {{ t: t, idx: idx }};
+            }});
+          }}
+          var binW = (win[1] - win[0]) / maxBars, bins = [];
+          for (var i = 0; i < maxBars; i++) bins.push({{ t: win[0] + (i + 0.5) * binW, idx: data.series.map(function(){{ return 0; }}), bin: true }});
+          data.series.forEach(function(s, si){{
+            s.points.forEach(function(p){{
+              if (p.t < win[0] - 1 || p.t > win[1] + 1) return;
+              var bi = Math.min(maxBars - 1, Math.max(0, Math.floor((p.t - win[0]) / binW)));
+              bins[bi].idx[si] += p.v;
+            }});
+          }});
+          return bins;
+        }}
+        function itemTip(it, si, name, v){{
+          var t = dsuTimeLabel(it.t, data.tz, data.lang, win[1] - win[0]);
+          var line = t + (data.series.length > 1 ? ' · ' + name : '');
+          if (data.stacked){{
+            return line + '\\n' + data.series.map(function(s, j){{ return s.name + ' ' + dsuFmtFull(it.idx[j]); }}).join(' · ');
+          }}
+          return line + '\\n' + dsuFmtFull(v);
+        }}
+        function render(){{
+          var items = binItems();
+          if (!items.length){{
+            var ticks = dsuNiceTicks(0), tmax = 1;
+            var parts = [];
+            parts.push('<text x="' + padL + '" y="18" font-family="' + FONT + '" font-size="15" font-weight="bold" fill="' + INK + '">' + dsuEsc(data.title) + '</text>');
+            ticks.forEach(function(t){{
+              var y = padT + plotH - (t / tmax) * plotH;
+              parts.push('<line x1="' + padL + '" y1="' + y.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y.toFixed(1) + '" stroke="' + GRAY1 + '" stroke-width="0.6" stroke-dasharray="2 3"/>');
+            }});
+            parts.push('<line x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (W - padR) + '" y2="' + (padT + plotH) + '" stroke="' + INK + '" stroke-width="1.4"/>');
+            parts.push('<text x="' + (padL + plotW / 2) + '" y="' + (padT + plotH / 2) + '" text-anchor="middle" font-family="' + FONT + '" font-size="13" fill="' + INK_FAINT + '">' + dsuEsc(data.lang === 'zh' ? '该时间窗口内无数据' : 'No data in this window') + '</text>');
+            host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:' + W + 'px;height:auto;background:' + PAPER + ';">' + parts.join('') + '</svg>';
+            return;
+          }}
+          var vmax = 0;
+          items.forEach(function(it){{
+            if (data.stacked){{ var s = 0; it.idx.forEach(function(x){{ s += x; }}); if (s > vmax) vmax = s; }}
+            else it.idx.forEach(function(x){{ if (x > vmax) vmax = x; }});
+          }});
+          var ticks = dsuNiceTicks(vmax * 1.1), tmax = ticks[ticks.length - 1] || 1;
+          var span = win[1] - win[0];
+          var parts = [];
+          parts.push('<text x="' + padL + '" y="18" font-family="' + FONT + '" font-size="15" font-weight="bold" fill="' + INK + '">' + dsuEsc(data.title) + '</text>');
+          if (data.ylabel) parts.push('<text x="' + (W - padR) + '" y="33" text-anchor="end" font-family="' + FONT + '" font-size="11" fill="' + INK_FAINT + '">' + dsuEsc(data.ylabel) + '</text>');
+          ticks.forEach(function(t){{
+            var y = padT + plotH - (t / tmax) * plotH;
+            parts.push('<line x1="' + padL + '" y1="' + y.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y.toFixed(1) + '" stroke="' + GRAY1 + '" stroke-width="0.6" stroke-dasharray="2 3"/>');
+            parts.push('<text x="' + (padL - 6) + '" y="' + (y + 4).toFixed(1) + '" text-anchor="end" font-family="' + FONT + '" font-size="10" fill="' + INK_FAINT + '">' + dsuFmt(t) + '</text>');
+          }});
+          parts.push('<line x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (W - padR) + '" y2="' + (padT + plotH) + '" stroke="' + INK + '" stroke-width="1.4"/>');
+          var n = items.length, slot = n ? plotW / n : plotW;
+          var barW = Math.min(slot * 0.72, data.stacked ? 120 : 120);
+          var step = Math.max(1, Math.floor(n / 12));
+          for (var i = 0; i < n; i += step){{
+            var cx = padL + slot * i + slot / 2;
+            var anchor = 'middle', tx = cx;
+            if (i === 0){{ anchor = 'start'; tx = padL + 10; }}
+            parts.push('<text x="' + tx.toFixed(1) + '" y="' + (padT + plotH + 18) + '" text-anchor="' + anchor + '" font-family="' + FONT + '" font-size="9.5" fill="' + INK_SOFT + '">' + dsuEsc(dsuTimeLabel(items[i].t, data.tz, data.lang, span)) + '</text>');
+          }}
+          if (mode === 'bar'){{
+            items.forEach(function(it, i){{
+              var x = padL + slot * i + (slot - barW) / 2;
+              if (data.stacked){{
+                var acc = 0;
+                data.series.forEach(function(s, si){{
+                  var v = it.idx[si]; if (v <= 0) return;
+                  var bh = (v / tmax) * plotH;
+                  parts.push('<rect class="v-bar" data-tip="' + dsuEscAttr(itemTip(it, si, s.name, v).replace(/\\n/g, '\\\\n')) + '" x="' + x.toFixed(1) + '" y="' + (padT + plotH - acc - bh).toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + Math.max(bh, 0.4).toFixed(1) + '" fill="' + s.color + '" opacity="0.94"></rect>');
+                  acc += bh;
+                }});
+              }} else {{
+                data.series.forEach(function(s, si){{
+                  var v = it.idx[si]; if (v <= 0) return;
+                  var bh = (v / tmax) * plotH;
+                  parts.push('<rect class="v-bar" data-tip="' + dsuEscAttr(itemTip(it, si, s.name, v).replace(/\\n/g, '\\\\n')) + '" x="' + x.toFixed(1) + '" y="' + (padT + plotH - bh).toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + Math.max(bh, 0.4).toFixed(1) + '" fill="' + s.color + '" opacity="0.92"></rect>');
+                }});
+              }}
+            }});
+          }} else {{
+            var xs = items.map(function(it, i){{ return padL + slot * i + slot / 2; }});
+            data.series.forEach(function(s, si){{
+              var coords = [];
+              items.forEach(function(it, i){{
+                var v = it.idx[si]; if (v <= 0) return;
+                var x = xs[i], y = padT + plotH - (v / tmax) * plotH;
+                coords.push([x, y]);
+                var tip = dsuEscAttr(itemTip(it, si, s.name, v).replace(/\\n/g, '\\\\n'));
+                parts.push('<circle class="pt" data-tip="' + tip + '" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.4" fill="' + s.color + '"></circle>');
+                parts.push('<circle class="pt-hit" data-tip="' + tip + '" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="13" fill="transparent"></circle>');
+              }});
+              if (coords.length > 1){{
+                parts.push('<polyline class="line-draw" pathLength="1" points="' + coords.map(function(c){{ return c[0].toFixed(1) + ',' + c[1].toFixed(1); }}).join(' ') + '" fill="none" stroke="' + s.color + '" stroke-width="2"></polyline>');
+              }}
+            }});
+          }}
+          if (data.stacked){{
+            var lg = '<g font-family="' + FONT + '" font-size="10" fill="' + INK_SOFT + '">';
+            data.series.forEach(function(s, si){{
+              lg += '<rect x="' + (72 + si * 150) + '" y="' + (H - 26) + '" width="10" height="10" fill="' + s.color + '"></rect>';
+              lg += '<text x="' + (86 + si * 150) + '" y="' + (H - 17) + '">' + dsuEsc(s.name) + '</text>';
+            }});
+            parts.push(lg + '</g>');
+          }}
+          host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:' + W + 'px;height:auto;background:' + PAPER + ';">' + parts.join('') + '</svg>';
+        }}
+        fig.querySelector('.mode-bar').addEventListener('click', function(e){{ e.stopPropagation(); mode = 'bar'; fig.querySelector('.mode-bar').classList.add('active'); fig.querySelector('.mode-line').classList.remove('active'); render(); }});
+        fig.querySelector('.mode-line').addEventListener('click', function(e){{ e.stopPropagation(); mode = 'line'; fig.querySelector('.mode-line').classList.add('active'); fig.querySelector('.mode-bar').classList.remove('active'); render(); }});
+        fig.querySelector('.z-in').addEventListener('click', function(e){{ e.stopPropagation(); var c = (win[0] + win[1]) / 2, w = (win[1] - win[0]) / 1.5; animateTo([c - w / 2, c + w / 2]); }});
+        fig.querySelector('.z-out').addEventListener('click', function(e){{ e.stopPropagation(); var c = (win[0] + win[1]) / 2, w = (win[1] - win[0]) * 1.5; animateTo([c - w / 2, c + w / 2]); }});
+        fig.querySelector('.z-reset').addEventListener('click', function(e){{ e.stopPropagation(); animateTo(full); }});
         fig.addEventListener('wheel', function(e){{
           e.preventDefault();
-          var r = fig.getBoundingClientRect();
-          var next = scale * (e.deltaY < 0 ? 1.18 : 1 / 1.18);
-          setScale(next, e.clientX - r.left, e.clientY - r.top);
+          var r = host.getBoundingClientRect();
+          var fx = r.width ? (e.clientX - r.left) / r.width : 0.5;
+          var tA = win[0] + (win[1] - win[0]) * fx;
+          var factor = e.deltaY < 0 ? 1 / 1.5 : 1.5;
+          var w = (win[1] - win[0]) * factor;
+          animateTo([tA - (tA - win[0]) * factor, tA - (tA - win[0]) * factor + w]);
         }}, {{ passive: false }});
-        var zi = fig.querySelector('.z-in'), zo = fig.querySelector('.z-out'),
-            zr = fig.querySelector('.z-reset');
-        if (zi) zi.addEventListener('click', function(e){{ e.stopPropagation(); setScale(scale * 1.3); }});
-        if (zo) zo.addEventListener('click', function(e){{ e.stopPropagation(); setScale(scale / 1.3); }});
-        if (zr) zr.addEventListener('click', function(e){{ e.stopPropagation(); setScale(1); }});
         var drag = null;
         fig.addEventListener('mousedown', function(e){{
-          if (scale > 1 && e.button === 0 && !e.target.closest('.fig-tools')){{
-            drag = {{ x: e.clientX, y: e.clientY, lx: fig.scrollLeft, ly: fig.scrollTop }};
+          if (e.button === 0 && !e.target.closest('.fig-tools')){{
+            var r = host.getBoundingClientRect();
+            drag = {{ x: e.clientX, y: e.clientY, lx: win[0], span: win[1] - win[0], wpx: r.width || plotW }};
           }}
         }});
         document.addEventListener('mousemove', function(e){{
           if (drag){{
-            var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dsuDragJustMoved = true;
-            fig.scrollLeft = drag.lx - dx;
-            fig.scrollTop = drag.ly - dy;
+            var dx = e.clientX - drag.x;
+            if (Math.abs(dx) > 3) dsuDragJustMoved = true;
+            var dt = -dx / (drag.wpx || 1) * drag.span;
+            var a = drag.lx + dt, b = a + drag.span;
+            win = clampWin(a, b);
+            render();
           }}
         }});
         document.addEventListener('mouseup', function(){{ drag = null; }});
+        render();
       }});
     }})();
     </script>
@@ -749,14 +727,6 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
     </html>
     """
     return body
-
-
-def _ts_label(ds: UsageDataset, t: int, lang: Optional[str] = None) -> str:
-    lang = lang or current_lang()
-    local = sec_to_local_dt(t, ds.tz_sec)
-    if ds.bucket_sec == HOUR_SEC:
-        return local.strftime("%m-%d %H时" if lang == "zh" else "%m-%d %Hh")
-    return local.strftime("%m-%d")
 
 
 def build_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str, Any],

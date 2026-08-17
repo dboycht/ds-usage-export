@@ -74,28 +74,28 @@ class TestReport(unittest.TestCase):
 
     def test_tooltips_and_animations(self):
         html_text = render_report(self.ds, self.tables, self.totals, self.meta)
-        # 悬停提示：SVG <title> + data-tip
+        # 悬停提示：静态图 <title> + 交互引擎 data-tip
         self.assertIn("<title>", html_text)
-        self.assertGreaterEqual(html_text.count("<title>"), 8)
+        self.assertGreaterEqual(html_text.count("<title>"), 4)
         self.assertIn("data-tip=", html_text)
         # 动效 CSS
         for css in ("dsu-grow-v", "dsu-grow-h", "dsu-draw", "dsu-fade-up",
                     "donut-seg", "pt-hit", "v-bar", "h-bar"):
             self.assertIn(css, html_text, f"缺少动效 {css}")
 
-    def test_tooltip_pin_and_zoom(self):
+    def test_tooltip_pin_and_interactive_engine(self):
         html_text = render_report(self.ds, self.tables, self.totals, self.meta)
         for token in ("dsu-tip", "pinned", "data-tip", "closest('[data-tip]')",
                       "Escape", "pre-line"):
             self.assertIn(token, html_text, f"缺少交互元素 {token}")
-        # 缩放：滚轮放大 + 控件 + 动效
-        for token in ("fig-zoom", "z-in", "z-out", "z-reset",
-                      "transformOrigin", "scale(", "deltaY", "transition: transform",
-                      "dsuDragJustMoved"):
-            self.assertIn(token, html_text, f"缺少缩放元素 {token}")
+        # 交互引擎：柱/线切换（默认柱状）、时间轴缩放（分桶聚合、rAF 动效）、拖拽平移
+        for token in ("mode-bar", "mode-line", '"mode": "bar"',
+                      "deltaY", "requestAnimationFrame", "animateTo", "clampWin",
+                      "binItems", "dsuDragJustMoved", "dsu-chart-data"):
+            self.assertIn(token, html_text, f"缺少引擎元素 {token}")
 
-    def test_many_bars_scrollable(self):
-        """数据点多时图表加宽并支持滚轮横滑。"""
+    def test_many_points_embedded(self):
+        """数据点多时完整嵌入交互引擎（窗口分桶，默认柱状细线，放大变粗）。"""
         from dsusage.api import DAY_SEC, date_to_start_sec
         c = DeepSeekPlatformClient("t")
         start = date_to_start_sec(date(2026, 6, 1), TZ8)
@@ -115,10 +115,9 @@ class TestReport(unittest.TestCase):
         tables = build_tables(ds)
         totals = compute_totals(ds)
         html_text = render_report(ds, tables, totals, self.meta)
-        self.assertIn("width:1020px", html_text)   # 30 根柱 → 宽 SVG 便于缩放后平移 (30*34)
-        self.assertIn("min-width:1020px", html_text)
-        self.assertIn("overflow-x: auto", html_text)
-        self.assertIn("scrollLeft", html_text)      # 缩放后拖拽平移仍存在
+        self.assertGreaterEqual(html_text.count('"t":'), 30)   # 30 天数据点完整嵌入
+        self.assertIn("dsu-chart-data", html_text)
+        self.assertIn("binItems", html_text)
 
     def test_full_number_display(self):
         """头版数据必须显示完整数字，不能缩写为 1.3B 之类。"""

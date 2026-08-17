@@ -41,14 +41,17 @@
       .fig::-webkit-scrollbar { height: 8px; }
       .fig::-webkit-scrollbar-track { background: #efe7d3; }
       .fig::-webkit-scrollbar-thumb { background: #9a917d; border-radius: 4px; }
-      /* ---- 缩放工具条与动画 ---- */
+      /* ---- 图表工具条：柱/线切换 + 缩放控件 ---- */
       .fig-tools { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 6px; }
       .fig-tools button { background: #f7f2e4; border: 1px solid #4a463c; color: #191813;
                            font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif; font-size: 13px; line-height: 1;
                            padding: 4px 11px; cursor: pointer; }
       .fig-tools button:hover { background: #191813; color: #f7f2e4; }
-      svg.fig-zoom { transform-origin: 0 0; transition: transform .25s ease;
-                      will-change: transform; }
+      .fig-tools button.active { background: #191813; color: #f7f2e4; }
+      .fig-tools .tool-gap { flex: 1; }
+      .dsu-chart { min-height: 60px; }
+      .dsu-chart svg { display: block; max-width: 760px; height: auto; background: #f7f2e4;
+                        border-bottom: 1px dashed #c9c0aa; }
       /* ---- 自绘提示气泡（悬停查看 / 点击钉住） ---- */
       .dsu-tip { position: fixed; z-index: 999; max-width: 340px; padding: 8px 12px;
                   background: #fffdf6; border: 1.5px solid #191813;
@@ -105,7 +108,7 @@
     <header class="masthead">
       <div class="masthead-top">
         <span>第 1 期 · 数据刊</span>
-        <span>2026-08-18 01:25</span>
+        <span>2026-08-18 02:21</span>
       </div>
       <h1 class="paper-title">DeepSeek 用量日报</h1>
       <div class="dateline">
@@ -115,35 +118,18 @@
     </header>
     
       <h2 class="sec">头版数据</h2>
-      <div class="stats"><div class="stat"><div class="stat-k">总请求数</div><div class="stat-v">1,300,000,000</div><div class="stat-s">REQUEST</div></div><div class="stat"><div class="stat-k">Token 合计</div><div class="stat-v">1,300,000,000</div><div class="stat-s">TOKENS</div></div><div class="stat"><div class="stat-k">费用合计</div><div class="stat-v">12,345.6789</div><div class="stat-s">COST</div></div><div class="stat"><div class="stat-k">缓存命中</div><div class="stat-v">87,654,321</div><div class="stat-s">HIT</div></div></div>
+      <div class="stats"><div class="stat"><div class="stat-k">总请求数</div><div class="stat-v">396</div><div class="stat-s">REQUEST</div></div><div class="stat"><div class="stat-k">Token 合计</div><div class="stat-v">30,720</div><div class="stat-s">TOKENS</div></div><div class="stat"><div class="stat-k">费用合计</div><div class="stat-v">0.1344</div><div class="stat-s">COST</div></div><div class="stat"><div class="stat-k">缓存命中</div><div class="stat-v">15,840</div><div class="stat-s">HIT</div></div></div>
       <hr class="paper-rule">
       <h2 class="sec">数据图表</h2>
-      <div class="fig"><div class="fig-tools"><button class="z-out" title="缩小">−</button><button class="z-in" title="放大">＋</button><button class="z-reset" title="复位">↺</button></div><svg class="fig-zoom" viewBox="0 0 760 250" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:760px;height:auto;background:#f7f2e4;"><text x="52" y="18" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="15" font-weight="bold" fill="#191813">每日费用（主要货币合计）</text><text x="748" y="33" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#8a8172">费用合计</text><line x1="52" y1="214.0" x2="748" y2="214.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="218.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">0</text><line x1="52" y1="158.0" x2="748" y2="158.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="162.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">0.20</text><line x1="52" y1="102.0" x2="748" y2="102.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="106.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">0.40</text><line x1="52" y1="46.0" x2="748" y2="46.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="50.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">0.60</text><line x1="52" y1="214" x2="748" y2="214" stroke="#191813" stroke-width="1.4"/><rect class="v-bar" data-tip="07-27 00时\n0.4（费用合计）" x="213.0" y="102.0" width="26.0" height="112.0" fill="#191813" opacity="0.92"><title>07-27 00时
-0.4（费用合计）</title></rect><text x="226.0" y="98.0" text-anchor="middle" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="9" fill="#191813">0.40</text><text x="62.0" y="232" text-anchor="start" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="9.5" fill="#4a463c">07-27 00时</text><rect class="v-bar" data-tip="07-27 01时\n0.02（费用合计）" x="561.0" y="208.4" width="26.0" height="5.6" fill="#a33b2e" opacity="0.92"><title>07-27 01时
-0.02（费用合计）</title></rect><text x="744.0" y="232" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="9.5" fill="#4a463c">07-27 01时</text></svg></div><div class="fig"><div class="fig-tools"><button class="z-out" title="缩小">−</button><button class="z-in" title="放大">＋</button><button class="z-reset" title="复位">↺</button></div><svg class="fig-zoom" viewBox="0 0 760 288" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:760px;height:auto;background:#f7f2e4;"><text x="52" y="18" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="15" font-weight="bold" fill="#191813">每日 Token 构成（缓存命中 / 未命中 / 输出）</text><line x1="52" y1="230.0" x2="748" y2="230.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="234.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">0</text><line x1="52" y1="168.7" x2="748" y2="168.7" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="172.7" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">200</text><line x1="52" y1="107.3" x2="748" y2="107.3" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="111.3" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">400</text><line x1="52" y1="46.0" x2="748" y2="46.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="50.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">600</text><line x1="52" y1="230" x2="748" y2="230" stroke="#191813" stroke-width="1.4"/><rect class="v-bar" data-tip="07-27 00时 · 输出 110\n缓存命中 100 · 缓存未命中 250 · 输出 110\nToken 合计 460" x="213.0" y="196.3" width="26.0" height="33.7" fill="#191813" opacity="0.94"><title>07-27 00时 · 输出 110
-缓存命中 100 · 缓存未命中 250 · 输出 110
-Token 合计 460</title></rect><rect class="v-bar" data-tip="07-27 00时 · 缓存未命中 250\n缓存命中 100 · 缓存未命中 250 · 输出 110\nToken 合计 460" x="213.0" y="119.6" width="26.0" height="76.7" fill="#9a917d" opacity="0.94"><title>07-27 00时 · 缓存未命中 250
-缓存命中 100 · 缓存未命中 250 · 输出 110
-Token 合计 460</title></rect><rect class="v-bar" data-tip="07-27 00时 · 缓存命中 100\n缓存命中 100 · 缓存未命中 250 · 输出 110\nToken 合计 460" x="213.0" y="88.9" width="26.0" height="30.7" fill="#c9c0aa" opacity="0.94"><title>07-27 00时 · 缓存命中 100
-缓存命中 100 · 缓存未命中 250 · 输出 110
-Token 合计 460</title></rect><text x="62.0" y="248" text-anchor="start" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="9.5" fill="#4a463c">07-27 00时</text><rect class="v-bar" data-tip="07-27 01时 · 输出 20\n缓存命中 0 · 缓存未命中 0 · 输出 20\nToken 合计 20" x="561.0" y="223.9" width="26.0" height="6.1" fill="#191813" opacity="0.94"><title>07-27 01时 · 输出 20
-缓存命中 0 · 缓存未命中 0 · 输出 20
-Token 合计 20</title></rect><text x="744.0" y="248" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="9.5" fill="#4a463c">07-27 01时</text><g font-family='Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif' font-size='10' fill='#4a463c'><rect x="72" y="262" width="10" height="10" fill="#c9c0aa"><title>缓存命中</title></rect><text x="86" y="271">缓存命中</text><rect x="222" y="262" width="10" height="10" fill="#9a917d"><title>缓存未命中</title></rect><text x="236" y="271">缓存未命中</text><rect x="372" y="262" width="10" height="10" fill="#191813"><title>输出</title></rect><text x="386" y="271">输出</text></g></svg></div><div class="fig"><div class="fig-tools"><button class="z-out" title="缩小">−</button><button class="z-in" title="放大">＋</button><button class="z-reset" title="复位">↺</button></div><svg class="fig-zoom" viewBox="0 0 760 250" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:760px;height:auto;background:#f7f2e4;"><text x="52" y="18" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="15" font-weight="bold" fill="#191813">小时 Token 走势</text><text x="748" y="33" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#8a8172">Token</text><line x1="52" y1="214.0" x2="748" y2="214.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="218.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">0</text><line x1="52" y1="158.0" x2="748" y2="158.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="162.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">200</text><line x1="52" y1="102.0" x2="748" y2="102.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="106.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">400</text><line x1="52" y1="46.0" x2="748" y2="46.0" stroke="#c9c0aa" stroke-width="0.6" stroke-dasharray="2 3"/><text x="46" y="50.0" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#8a8172">600</text><line x1="52" y1="214" x2="748" y2="214" stroke="#191813" stroke-width="1.4"/><polygon class="area-fade" points="M 52.0,214 L 52.0,85.2 L 748.0,208.4 L 748.0,214 Z" fill="#1f4e79" opacity="0.10"/><polyline class="line-draw" pathLength="1" points="52.0,85.2 748.0,208.4" fill="none" stroke="#1f4e79" stroke-width="2"/><circle class="pt" data-tip="07-27 00时\n460" cx="52.0" cy="85.2" r="2.4" fill="#191813"><title>07-27 00时
-460</title></circle><circle class="pt-hit" data-tip="07-27 00时\n460" cx="52.0" cy="85.2" r="13" fill="transparent"><title>07-27 00时
-460</title></circle><circle class="pt" data-tip="07-27 01时\n20" cx="748.0" cy="208.4" r="2.4" fill="#191813"><title>07-27 01时
-20</title></circle><circle class="pt-hit" data-tip="07-27 01时\n20" cx="748.0" cy="208.4" r="13" fill="transparent"><title>07-27 01时
-20</title></circle><text x="62.0" y="232" text-anchor="start" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="9.5" fill="#4a463c">07-27 00时</text><text x="744.0" y="232" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="9.5" fill="#4a463c">07-27 01时</text></svg></div><div class="fig"><div class="fig-tools"><button class="z-out" title="缩小">−</button><button class="z-in" title="放大">＋</button><button class="z-reset" title="复位">↺</button></div><svg class="fig-zoom" viewBox="0 0 760 300" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:760px;height:auto;background:#f7f2e4;"><text x="20" y="24" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="15" font-weight="bold" fill="#191813">模型费用占比</text><path class="donut-seg" data-tip="deepseek-chat\n0.12（28.6%）" d="M 200,150 L 200.0,54.0 A 96,96 0 0 1 293.6,171.4 Z" fill="#191813" opacity="0.92" stroke="#f7f2e4" stroke-width="1.5"><title>deepseek-chat
-0.12（28.6%）</title></path><path class="donut-seg" data-tip="deepseek-reasoner\n0.3（71.4%）" d="M 200,150 L 293.6,171.4 A 96,96 0 1 1 200.0,54.0 Z" fill="#a33b2e" opacity="0.92" stroke="#f7f2e4" stroke-width="1.5"><title>deepseek-reasoner
-0.3（71.4%）</title></path><circle cx="200" cy="150" r="34" fill="#f7f2e4" stroke="#191813" stroke-width="1.2"/><text x="200" y="146" text-anchor="middle" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="19" font-weight="bold" fill="#191813">0.42</text><text x="200" y="165" text-anchor="middle" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#4a463c">合计</text><rect class="lg-sw" data-tip="deepseek-chat\n0.12（28.6%）" x="342" y="80" width="11" height="11" fill="#191813"><title>deepseek-chat
-0.12（28.6%）</title></rect><text x="359" y="90" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#191813">deepseek-chat</text><text x="572" y="90" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#4a463c" text-anchor="end">28.6%</text><rect class="lg-sw" data-tip="deepseek-reasoner\n0.3（71.4%）" x="342" y="100" width="11" height="11" fill="#a33b2e"><title>deepseek-reasoner
-0.3（71.4%）</title></rect><text x="359" y="110" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#191813">deepseek-reasoner</text><text x="572" y="110" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#4a463c" text-anchor="end">71.4%</text></svg></div><div class="fig"><div class="fig-tools"><button class="z-out" title="缩小">−</button><button class="z-in" title="放大">＋</button><button class="z-reset" title="复位">↺</button></div><svg class="fig-zoom" viewBox="0 0 760 94" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:760px;height:auto;background:#f7f2e4;"><text x="20" y="20" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="15" font-weight="bold" fill="#191813">API Key 费用排名</text><text x="232" y="43" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#191813">KeyA</text><rect class="h-bar" data-tip="KeyA\n0.12" x="240" y="30" width="176.0" height="15" fill="#a33b2e" opacity="0.92"><title>KeyA
-0.12</title></rect><text x="422.0" y="43" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10.5" fill="#4a463c">0.12</text><text x="232" y="67" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#191813">KeyB</text><rect class="h-bar" data-tip="KeyB\n0.3" x="240" y="54" width="440.0" height="15" fill="#191813" opacity="0.92"><title>KeyB
-0.3</title></rect><text x="686.0" y="67" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10.5" fill="#4a463c">0.30</text></svg></div>
+      <div class="fig dsu-chart-fig"><div class="fig-tools"><button class="mode-bar active" title="柱状图">▮</button><button class="mode-line" title="折线图">〰</button><span class="tool-gap"></span><button class="z-out" title="缩小">−</button><button class="z-in" title="放大">＋</button><button class="z-reset" title="复位">↺</button></div><script type="application/json" class="dsu-chart-data">{"title": "每日费用（主要货币合计）", "ylabel": "费用合计", "stacked": false, "mode": "bar", "lang": "zh", "tz": 28800, "hourly": true, "series": [{"name": "费用合计", "color": "#191813", "points": [{"t": 1785081600, "v": 0.001}, {"t": 1785085200, "v": 0.0014}, {"t": 1785088800, "v": 0.0018}, {"t": 1785092400, "v": 0.0022}, {"t": 1785096000, "v": 0.0026}, {"t": 1785099600, "v": 0.003}, {"t": 1785103200, "v": 0.0034}, {"t": 1785106800, "v": 0.0038}, {"t": 1785110400, "v": 0.0042}, {"t": 1785114000, "v": 0.0046}, {"t": 1785117600, "v": 0.005}, {"t": 1785121200, "v": 0.0054}, {"t": 1785124800, "v": 0.0058}, {"t": 1785128400, "v": 0.0062}, {"t": 1785132000, "v": 0.0066}, {"t": 1785135600, "v": 0.007}, {"t": 1785139200, "v": 0.0074}, {"t": 1785142800, "v": 0.0078}, {"t": 1785146400, "v": 0.0082}, {"t": 1785150000, "v": 0.0086}, {"t": 1785153600, "v": 0.009}, {"t": 1785157200, "v": 0.0094}, {"t": 1785160800, "v": 0.0098}, {"t": 1785164400, "v": 0.0102}]}]}</script><div class="dsu-chart"></div></div><div class="fig dsu-chart-fig"><div class="fig-tools"><button class="mode-bar active" title="柱状图">▮</button><button class="mode-line" title="折线图">〰</button><span class="tool-gap"></span><button class="z-out" title="缩小">−</button><button class="z-in" title="放大">＋</button><button class="z-reset" title="复位">↺</button></div><script type="application/json" class="dsu-chart-data">{"title": "每日 Token 构成（缓存命中 / 未命中 / 输出）", "ylabel": "Token 合计", "stacked": true, "mode": "bar", "lang": "zh", "tz": 28800, "hourly": true, "series": [{"name": "缓存命中", "color": "#c9c0aa", "points": [{"t": 1785081600, "v": 200.0}, {"t": 1785085200, "v": 240.0}, {"t": 1785088800, "v": 280.0}, {"t": 1785092400, "v": 320.0}, {"t": 1785096000, "v": 360.0}, {"t": 1785099600, "v": 400.0}, {"t": 1785103200, "v": 440.0}, {"t": 1785106800, "v": 480.0}, {"t": 1785110400, "v": 520.0}, {"t": 1785114000, "v": 560.0}, {"t": 1785117600, "v": 600.0}, {"t": 1785121200, "v": 640.0}, {"t": 1785124800, "v": 680.0}, {"t": 1785128400, "v": 720.0}, {"t": 1785132000, "v": 760.0}, {"t": 1785135600, "v": 800.0}, {"t": 1785139200, "v": 840.0}, {"t": 1785142800, "v": 880.0}, {"t": 1785146400, "v": 920.0}, {"t": 1785150000, "v": 960.0}, {"t": 1785153600, "v": 1000.0}, {"t": 1785157200, "v": 1040.0}, {"t": 1785160800, "v": 1080.0}, {"t": 1785164400, "v": 1120.0}]}, {"name": "缓存未命中", "color": "#9a917d", "points": [{"t": 1785081600, "v": 100.0}, {"t": 1785085200, "v": 125.0}, {"t": 1785088800, "v": 150.0}, {"t": 1785092400, "v": 175.0}, {"t": 1785096000, "v": 200.0}, {"t": 1785099600, "v": 225.0}, {"t": 1785103200, "v": 250.0}, {"t": 1785106800, "v": 275.0}, {"t": 1785110400, "v": 300.0}, {"t": 1785114000, "v": 325.0}, {"t": 1785117600, "v": 350.0}, {"t": 1785121200, "v": 375.0}, {"t": 1785124800, "v": 400.0}, {"t": 1785128400, "v": 425.0}, {"t": 1785132000, "v": 450.0}, {"t": 1785135600, "v": 475.0}, {"t": 1785139200, "v": 500.0}, {"t": 1785142800, "v": 525.0}, {"t": 1785146400, "v": 550.0}, {"t": 1785150000, "v": 575.0}, {"t": 1785153600, "v": 600.0}, {"t": 1785157200, "v": 625.0}, {"t": 1785160800, "v": 650.0}, {"t": 1785164400, "v": 675.0}]}, {"name": "输出", "color": "#191813", "points": [{"t": 1785081600, "v": 60.0}, {"t": 1785085200, "v": 75.0}, {"t": 1785088800, "v": 90.0}, {"t": 1785092400, "v": 105.0}, {"t": 1785096000, "v": 120.0}, {"t": 1785099600, "v": 135.0}, {"t": 1785103200, "v": 150.0}, {"t": 1785106800, "v": 165.0}, {"t": 1785110400, "v": 180.0}, {"t": 1785114000, "v": 195.0}, {"t": 1785117600, "v": 210.0}, {"t": 1785121200, "v": 225.0}, {"t": 1785124800, "v": 240.0}, {"t": 1785128400, "v": 255.0}, {"t": 1785132000, "v": 270.0}, {"t": 1785135600, "v": 285.0}, {"t": 1785139200, "v": 300.0}, {"t": 1785142800, "v": 315.0}, {"t": 1785146400, "v": 330.0}, {"t": 1785150000, "v": 345.0}, {"t": 1785153600, "v": 360.0}, {"t": 1785157200, "v": 375.0}, {"t": 1785160800, "v": 390.0}, {"t": 1785164400, "v": 405.0}]}]}</script><div class="dsu-chart"></div></div><div class="fig dsu-chart-fig"><div class="fig-tools"><button class="mode-bar active" title="柱状图">▮</button><button class="mode-line" title="折线图">〰</button><span class="tool-gap"></span><button class="z-out" title="缩小">−</button><button class="z-in" title="放大">＋</button><button class="z-reset" title="复位">↺</button></div><script type="application/json" class="dsu-chart-data">{"title": "小时 Token 走势", "ylabel": "Token", "stacked": false, "mode": "bar", "lang": "zh", "tz": 28800, "hourly": true, "series": [{"name": "Token 合计", "color": "#1f4e79", "points": [{"t": 1785081600, "v": 360.0}, {"t": 1785085200, "v": 440.0}, {"t": 1785088800, "v": 520.0}, {"t": 1785092400, "v": 600.0}, {"t": 1785096000, "v": 680.0}, {"t": 1785099600, "v": 760.0}, {"t": 1785103200, "v": 840.0}, {"t": 1785106800, "v": 920.0}, {"t": 1785110400, "v": 1000.0}, {"t": 1785114000, "v": 1080.0}, {"t": 1785117600, "v": 1160.0}, {"t": 1785121200, "v": 1240.0}, {"t": 1785124800, "v": 1320.0}, {"t": 1785128400, "v": 1400.0}, {"t": 1785132000, "v": 1480.0}, {"t": 1785135600, "v": 1560.0}, {"t": 1785139200, "v": 1640.0}, {"t": 1785142800, "v": 1720.0}, {"t": 1785146400, "v": 1800.0}, {"t": 1785150000, "v": 1880.0}, {"t": 1785153600, "v": 1960.0}, {"t": 1785157200, "v": 2040.0}, {"t": 1785160800, "v": 2120.0}, {"t": 1785164400, "v": 2200.0}]}]}</script><div class="dsu-chart"></div></div><div class="fig"><svg class="fig-zoom" viewBox="0 0 760 300" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:760px;height:auto;background:#f7f2e4;"><text x="20" y="24" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="15" font-weight="bold" fill="#191813">模型费用占比</text><circle class="donut-seg" data-tip="deepseek-chat\n0.1344（100.0%）" cx="200" cy="150" r="96" fill="#191813" opacity="0.92" stroke="#f7f2e4" stroke-width="1.5"><title>deepseek-chat
+0.1344（100.0%）</title></circle><circle cx="200" cy="150" r="34" fill="#f7f2e4" stroke="#191813" stroke-width="1.2"/><text x="200" y="146" text-anchor="middle" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="19" font-weight="bold" fill="#191813">0.13</text><text x="200" y="165" text-anchor="middle" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10" fill="#4a463c">合计</text><rect class="lg-sw" data-tip="deepseek-chat\n0.1344（100.0%）" x="342" y="80" width="11" height="11" fill="#191813"><title>deepseek-chat
+0.1344（100.0%）</title></rect><text x="359" y="90" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#191813">deepseek-chat</text><text x="572" y="90" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#4a463c" text-anchor="end">100.0%</text></svg></div><div class="fig"><svg class="fig-zoom" viewBox="0 0 760 70" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:760px;height:auto;background:#f7f2e4;"><text x="20" y="20" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="15" font-weight="bold" fill="#191813">API Key 费用排名</text><text x="232" y="43" text-anchor="end" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="11" fill="#191813">KeyA</text><rect class="h-bar" data-tip="KeyA\n0.1344" x="240" y="30" width="440.0" height="15" fill="#a33b2e" opacity="0.92"><title>KeyA
+0.1344</title></rect><text x="686.0" y="43" font-family="Georgia, 'Times New Roman', 'Songti SC', 'SimSun', 'Noto Serif SC', serif" font-size="10.5" fill="#4a463c">0.13</text></svg></div>
       <hr class="paper-rule">
       <h2 class="sec">数据表</h2>
-      <h3 class="sec">每日汇总</h3><table><thead><tr><th>日期</th><th>请求数</th><th>输入(缓存命中)</th><th>输入(缓存未命中)</th><th>输出</th><th>Token合计</th><th>费用</th></tr></thead><tbody><tr><td>2026-07-27</td><td>6</td><td>100</td><td>250</td><td>130</td><td>480</td><td>0.42</td></tr></tbody></table><h3 class="sec">模型汇总</h3><table><thead><tr><th>模型</th><th>请求数</th><th>输入(缓存命中)</th><th>输入(缓存未命中)</th><th>输出</th><th>Token合计</th><th>费用</th><th>费用占比%</th></tr></thead><tbody><tr><td>deepseek-chat</td><td>3</td><td>100</td><td>50</td><td>50</td><td>200</td><td>0.12</td><td>28.57</td></tr><tr><td>deepseek-reasoner</td><td>3</td><td>0</td><td>200</td><td>80</td><td>280</td><td>0.3</td><td>71.43</td></tr></tbody></table><h3 class="sec">API Key 汇总</h3><table><thead><tr><th>API Key</th><th>请求数</th><th>输入(缓存命中)</th><th>输入(缓存未命中)</th><th>输出</th><th>Token合计</th><th>费用</th><th>费用占比%</th></tr></thead><tbody><tr><td>KeyA</td><td>3</td><td>100</td><td>50</td><td>50</td><td>200</td><td>0.12</td><td>28.57</td></tr><tr><td>KeyB</td><td>3</td><td>0</td><td>200</td><td>80</td><td>280</td><td>0.3</td><td>71.43</td></tr></tbody></table>
+      <h3 class="sec">每日汇总</h3><table><thead><tr><th>日期</th><th>请求数</th><th>输入(缓存命中)</th><th>输入(缓存未命中)</th><th>输出</th><th>Token合计</th><th>费用</th></tr></thead><tbody><tr><td>2026-07-27</td><td>396</td><td>15840</td><td>9300</td><td>5580</td><td>30720</td><td>0.1344</td></tr></tbody></table><h3 class="sec">模型汇总</h3><table><thead><tr><th>模型</th><th>请求数</th><th>输入(缓存命中)</th><th>输入(缓存未命中)</th><th>输出</th><th>Token合计</th><th>费用</th><th>费用占比%</th></tr></thead><tbody><tr><td>deepseek-chat</td><td>396</td><td>15840</td><td>9300</td><td>5580</td><td>30720</td><td>0.1344</td><td>100.0</td></tr></tbody></table><h3 class="sec">API Key 汇总</h3><table><thead><tr><th>API Key</th><th>请求数</th><th>输入(缓存命中)</th><th>输入(缓存未命中)</th><th>输出</th><th>Token合计</th><th>费用</th><th>费用占比%</th></tr></thead><tbody><tr><td>KeyA</td><td>396</td><td>15840</td><td>9300</td><td>5580</td><td>30720</td><td>0.1344</td><td>100.0</td></tr></tbody></table>
       <div class="footer">
-        数据来源：platform.deepseek.com 用量接口（内部 API）· 生成工具 ds-usage-export 1.0.2 · 生成时间 2026-08-18 01:25&lt;br&gt;本刊数据仅供个人用量归档与分析，请勿外传；费用为平台记账口径合计，可能与账单存在尾差。
+        数据来源：platform.deepseek.com 用量接口（内部 API）· 生成工具 ds-usage-export 1.0.7 · 生成时间 2026-08-18 02:21&lt;br&gt;本刊数据仅供个人用量归档与分析，请勿外传；费用为平台记账口径合计，可能与账单存在尾差。
       </div>
     </div>
     <script>
@@ -192,42 +178,224 @@ Token 合计 20</title></rect><text x="744.0" y="248" text-anchor="end" font-fam
       });
       // 移除原生 <title>，避免与自绘气泡重复提示
       document.querySelectorAll('[data-tip] title').forEach(function(t){ t.remove(); });
-      // 图表缩放：滚轮以鼠标为锚点放大/缩小（带动效）；控件 ＋/−/↺；放大后可拖拽平移
-      document.querySelectorAll('.fig').forEach(function(fig){
-        var svg = fig.querySelector('svg');
-        var scale = 1;
-        function setScale(s, ox, oy){
-          s = Math.min(6, Math.max(1, s));
-          if (ox != null) svg.style.transformOrigin = ox + 'px ' + oy + 'px';
-          svg.style.transform = 'scale(' + s + ')';
-          scale = s;
+      // ---- 时间序列交互图引擎：柱/线切换（默认柱状）、时间轴缩放、分桶聚合、拖拽平移 ----
+      function dsuEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+      function dsuEscAttr(s){ return dsuEsc(s).replace(/"/g,'&quot;'); }
+      function dsuFmt(v){
+        if (v >= 1e9) return (v/1e9).toFixed(1)+'B';
+        if (v >= 1e6) return (v/1e6).toFixed(1)+'M';
+        if (v >= 1e4) return (v/1e3).toFixed(0)+'K';
+        if (v >= 1000) return (v/1e3).toFixed(1)+'K';
+        if (v >= 100 || v === Math.round(v)) return v.toFixed(0);
+        if (v < 1 && v !== 0) return (Math.round(v * 10000) / 10000).toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+        return v.toFixed(2);
+      }
+      function dsuFmtFull(v){ return Number(v).toLocaleString('en-US', { maximumFractionDigits: 6 }); }
+      function dsuNiceTicks(vmax){
+        if (vmax <= 0) return [0];
+        var step = vmax / 4, mag = Math.pow(10, Math.floor(Math.log10(step || 1))), norm = step / mag;
+        var nice = mag * (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10);
+        var out = [0], v = nice;
+        while (v < vmax - 1e-9) { out.push(Math.round(v*1e6)/1e6); v += nice; }
+        if (out[out.length-1] < vmax - 1e-9) out.push(Math.round(v*1e6)/1e6);
+        return out;
+      }
+      function dsuTimeLabel(t, tz, lang, span){
+        var d = new Date((t + tz) * 1000);
+        var mm = ('0' + (d.getUTCMonth() + 1)).slice(-2), dd = ('0' + d.getUTCDate()).slice(-2),
+            hh = ('0' + d.getUTCHours()).slice(-2);
+        if (span <= 3 * 86400) return (lang === 'zh' ? mm + '-' + dd + ' ' + hh + '时' : mm + '-' + dd + ' ' + hh + 'h');
+        return mm + '-' + dd;
+      }
+      document.querySelectorAll('.fig.dsu-chart-fig').forEach(function(fig){
+        var data = JSON.parse(fig.querySelector('.dsu-chart-data').textContent);
+        var host = fig.querySelector('.dsu-chart');
+        var FONT = "Georgia,'Times New Roman','Songti SC',serif";
+        var INK = '#191813', INK_SOFT = '#4a463c', INK_FAINT = '#8a8172', GRAY1 = '#c9c0aa', PAPER = '#f7f2e4';
+        var tmin = Infinity, tmax = -Infinity;
+        data.series.forEach(function(s){ s.points.forEach(function(p){ if (p.t < tmin) tmin = p.t; if (p.t > tmax) tmax = p.t; }); });
+        if (!isFinite(tmin)) tmin = 0; if (!isFinite(tmax)) tmax = tmin + 86400;
+        var full = [tmin, tmax], win = [tmin, tmax];
+        var mode = 'bar';
+        var W = 760, H = data.stacked ? 288 : 250;
+        var padL = 52, padR = 12, padT = 46, padB = data.stacked ? 58 : 36;
+        var plotW = W - padL - padR, plotH = H - padT - padB;
+        var anim = null;
+        function clampWin(a, b){
+          var fw = full[1] - full[0];
+          var w = b - a;
+          if (w > fw) return [full[0], full[1]];
+          if (w < fw / 60) w = fw / 60;
+          if (a < full[0]) { a = full[0]; b = a + w; }
+          if (b > full[1]) { b = full[1]; a = b - w; }
+          return [a, b];
         }
+        function animateTo(nw){
+          var from = [win[0], win[1]], to = clampWin(nw[0], nw[1]);
+          if (anim) cancelAnimationFrame(anim);
+          var t0 = Date.now(), dur = 180;
+          function frame(){
+            var k = Math.min(1, (Date.now() - t0) / dur);
+            var e = 1 - Math.pow(1 - k, 3);
+            win = [from[0] + (to[0] - from[0]) * e, from[1] + (to[1] - from[1]) * e];
+            render();
+            if (k < 1) anim = requestAnimationFrame(frame); else anim = null;
+          }
+          frame();
+        }
+        function binItems(){
+          var pts = [];
+          data.series.forEach(function(s){ s.points.forEach(function(p){ if (p.t >= win[0] - 1 && p.t <= win[1] + 1) pts.push(p.t); }); });
+          pts.sort(function(a, b){ return a - b; });
+          var uniq = []; pts.forEach(function(t){ if (!uniq.length || uniq[uniq.length-1] !== t) uniq.push(t); });
+          var maxBars = Math.max(3, Math.floor(plotW / 4));
+          if (uniq.length <= maxBars){
+            return uniq.map(function(t){
+              var idx = data.series.map(function(s){
+                for (var i = 0; i < s.points.length; i++) if (s.points[i].t === t) return s.points[i].v;
+                return 0;
+              });
+              return { t: t, idx: idx };
+            });
+          }
+          var binW = (win[1] - win[0]) / maxBars, bins = [];
+          for (var i = 0; i < maxBars; i++) bins.push({ t: win[0] + (i + 0.5) * binW, idx: data.series.map(function(){ return 0; }), bin: true });
+          data.series.forEach(function(s, si){
+            s.points.forEach(function(p){
+              if (p.t < win[0] - 1 || p.t > win[1] + 1) return;
+              var bi = Math.min(maxBars - 1, Math.max(0, Math.floor((p.t - win[0]) / binW)));
+              bins[bi].idx[si] += p.v;
+            });
+          });
+          return bins;
+        }
+        function itemTip(it, si, name, v){
+          var t = dsuTimeLabel(it.t, data.tz, data.lang, win[1] - win[0]);
+          var line = t + (data.series.length > 1 ? ' · ' + name : '');
+          if (data.stacked){
+            return line + '\n' + data.series.map(function(s, j){ return s.name + ' ' + dsuFmtFull(it.idx[j]); }).join(' · ');
+          }
+          return line + '\n' + dsuFmtFull(v);
+        }
+        function render(){
+          var items = binItems();
+          if (!items.length){
+            var ticks = dsuNiceTicks(0), tmax = 1;
+            var parts = [];
+            parts.push('<text x="' + padL + '" y="18" font-family="' + FONT + '" font-size="15" font-weight="bold" fill="' + INK + '">' + dsuEsc(data.title) + '</text>');
+            ticks.forEach(function(t){
+              var y = padT + plotH - (t / tmax) * plotH;
+              parts.push('<line x1="' + padL + '" y1="' + y.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y.toFixed(1) + '" stroke="' + GRAY1 + '" stroke-width="0.6" stroke-dasharray="2 3"/>');
+            });
+            parts.push('<line x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (W - padR) + '" y2="' + (padT + plotH) + '" stroke="' + INK + '" stroke-width="1.4"/>');
+            parts.push('<text x="' + (padL + plotW / 2) + '" y="' + (padT + plotH / 2) + '" text-anchor="middle" font-family="' + FONT + '" font-size="13" fill="' + INK_FAINT + '">' + dsuEsc(data.lang === 'zh' ? '该时间窗口内无数据' : 'No data in this window') + '</text>');
+            host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:' + W + 'px;height:auto;background:' + PAPER + ';">' + parts.join('') + '</svg>';
+            return;
+          }
+          var vmax = 0;
+          items.forEach(function(it){
+            if (data.stacked){ var s = 0; it.idx.forEach(function(x){ s += x; }); if (s > vmax) vmax = s; }
+            else it.idx.forEach(function(x){ if (x > vmax) vmax = x; });
+          });
+          var ticks = dsuNiceTicks(vmax * 1.1), tmax = ticks[ticks.length - 1] || 1;
+          var span = win[1] - win[0];
+          var parts = [];
+          parts.push('<text x="' + padL + '" y="18" font-family="' + FONT + '" font-size="15" font-weight="bold" fill="' + INK + '">' + dsuEsc(data.title) + '</text>');
+          if (data.ylabel) parts.push('<text x="' + (W - padR) + '" y="33" text-anchor="end" font-family="' + FONT + '" font-size="11" fill="' + INK_FAINT + '">' + dsuEsc(data.ylabel) + '</text>');
+          ticks.forEach(function(t){
+            var y = padT + plotH - (t / tmax) * plotH;
+            parts.push('<line x1="' + padL + '" y1="' + y.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y.toFixed(1) + '" stroke="' + GRAY1 + '" stroke-width="0.6" stroke-dasharray="2 3"/>');
+            parts.push('<text x="' + (padL - 6) + '" y="' + (y + 4).toFixed(1) + '" text-anchor="end" font-family="' + FONT + '" font-size="10" fill="' + INK_FAINT + '">' + dsuFmt(t) + '</text>');
+          });
+          parts.push('<line x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (W - padR) + '" y2="' + (padT + plotH) + '" stroke="' + INK + '" stroke-width="1.4"/>');
+          var n = items.length, slot = n ? plotW / n : plotW;
+          var barW = Math.min(slot * 0.72, data.stacked ? 120 : 120);
+          var step = Math.max(1, Math.floor(n / 12));
+          for (var i = 0; i < n; i += step){
+            var cx = padL + slot * i + slot / 2;
+            var anchor = 'middle', tx = cx;
+            if (i === 0){ anchor = 'start'; tx = padL + 10; }
+            parts.push('<text x="' + tx.toFixed(1) + '" y="' + (padT + plotH + 18) + '" text-anchor="' + anchor + '" font-family="' + FONT + '" font-size="9.5" fill="' + INK_SOFT + '">' + dsuEsc(dsuTimeLabel(items[i].t, data.tz, data.lang, span)) + '</text>');
+          }
+          if (mode === 'bar'){
+            items.forEach(function(it, i){
+              var x = padL + slot * i + (slot - barW) / 2;
+              if (data.stacked){
+                var acc = 0;
+                data.series.forEach(function(s, si){
+                  var v = it.idx[si]; if (v <= 0) return;
+                  var bh = (v / tmax) * plotH;
+                  parts.push('<rect class="v-bar" data-tip="' + dsuEscAttr(itemTip(it, si, s.name, v).replace(/\n/g, '\\n')) + '" x="' + x.toFixed(1) + '" y="' + (padT + plotH - acc - bh).toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + Math.max(bh, 0.4).toFixed(1) + '" fill="' + s.color + '" opacity="0.94"></rect>');
+                  acc += bh;
+                });
+              } else {
+                data.series.forEach(function(s, si){
+                  var v = it.idx[si]; if (v <= 0) return;
+                  var bh = (v / tmax) * plotH;
+                  parts.push('<rect class="v-bar" data-tip="' + dsuEscAttr(itemTip(it, si, s.name, v).replace(/\n/g, '\\n')) + '" x="' + x.toFixed(1) + '" y="' + (padT + plotH - bh).toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + Math.max(bh, 0.4).toFixed(1) + '" fill="' + s.color + '" opacity="0.92"></rect>');
+                });
+              }
+            });
+          } else {
+            var xs = items.map(function(it, i){ return padL + slot * i + slot / 2; });
+            data.series.forEach(function(s, si){
+              var coords = [];
+              items.forEach(function(it, i){
+                var v = it.idx[si]; if (v <= 0) return;
+                var x = xs[i], y = padT + plotH - (v / tmax) * plotH;
+                coords.push([x, y]);
+                var tip = dsuEscAttr(itemTip(it, si, s.name, v).replace(/\n/g, '\\n'));
+                parts.push('<circle class="pt" data-tip="' + tip + '" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.4" fill="' + s.color + '"></circle>');
+                parts.push('<circle class="pt-hit" data-tip="' + tip + '" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="13" fill="transparent"></circle>');
+              });
+              if (coords.length > 1){
+                parts.push('<polyline class="line-draw" pathLength="1" points="' + coords.map(function(c){ return c[0].toFixed(1) + ',' + c[1].toFixed(1); }).join(' ') + '" fill="none" stroke="' + s.color + '" stroke-width="2"></polyline>');
+              }
+            });
+          }
+          if (data.stacked){
+            var lg = '<g font-family="' + FONT + '" font-size="10" fill="' + INK_SOFT + '">';
+            data.series.forEach(function(s, si){
+              lg += '<rect x="' + (72 + si * 150) + '" y="' + (H - 26) + '" width="10" height="10" fill="' + s.color + '"></rect>';
+              lg += '<text x="' + (86 + si * 150) + '" y="' + (H - 17) + '">' + dsuEsc(s.name) + '</text>';
+            });
+            parts.push(lg + '</g>');
+          }
+          host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:' + W + 'px;height:auto;background:' + PAPER + ';">' + parts.join('') + '</svg>';
+        }
+        fig.querySelector('.mode-bar').addEventListener('click', function(e){ e.stopPropagation(); mode = 'bar'; fig.querySelector('.mode-bar').classList.add('active'); fig.querySelector('.mode-line').classList.remove('active'); render(); });
+        fig.querySelector('.mode-line').addEventListener('click', function(e){ e.stopPropagation(); mode = 'line'; fig.querySelector('.mode-line').classList.add('active'); fig.querySelector('.mode-bar').classList.remove('active'); render(); });
+        fig.querySelector('.z-in').addEventListener('click', function(e){ e.stopPropagation(); var c = (win[0] + win[1]) / 2, w = (win[1] - win[0]) / 1.5; animateTo([c - w / 2, c + w / 2]); });
+        fig.querySelector('.z-out').addEventListener('click', function(e){ e.stopPropagation(); var c = (win[0] + win[1]) / 2, w = (win[1] - win[0]) * 1.5; animateTo([c - w / 2, c + w / 2]); });
+        fig.querySelector('.z-reset').addEventListener('click', function(e){ e.stopPropagation(); animateTo(full); });
         fig.addEventListener('wheel', function(e){
           e.preventDefault();
-          var r = fig.getBoundingClientRect();
-          var next = scale * (e.deltaY < 0 ? 1.18 : 1 / 1.18);
-          setScale(next, e.clientX - r.left, e.clientY - r.top);
+          var r = host.getBoundingClientRect();
+          var fx = r.width ? (e.clientX - r.left) / r.width : 0.5;
+          var tA = win[0] + (win[1] - win[0]) * fx;
+          var factor = e.deltaY < 0 ? 1 / 1.5 : 1.5;
+          var w = (win[1] - win[0]) * factor;
+          animateTo([tA - (tA - win[0]) * factor, tA - (tA - win[0]) * factor + w]);
         }, { passive: false });
-        var zi = fig.querySelector('.z-in'), zo = fig.querySelector('.z-out'),
-            zr = fig.querySelector('.z-reset');
-        if (zi) zi.addEventListener('click', function(e){ e.stopPropagation(); setScale(scale * 1.3); });
-        if (zo) zo.addEventListener('click', function(e){ e.stopPropagation(); setScale(scale / 1.3); });
-        if (zr) zr.addEventListener('click', function(e){ e.stopPropagation(); setScale(1); });
         var drag = null;
         fig.addEventListener('mousedown', function(e){
-          if (scale > 1 && e.button === 0 && !e.target.closest('.fig-tools')){
-            drag = { x: e.clientX, y: e.clientY, lx: fig.scrollLeft, ly: fig.scrollTop };
+          if (e.button === 0 && !e.target.closest('.fig-tools')){
+            var r = host.getBoundingClientRect();
+            drag = { x: e.clientX, y: e.clientY, lx: win[0], span: win[1] - win[0], wpx: r.width || plotW };
           }
         });
         document.addEventListener('mousemove', function(e){
           if (drag){
-            var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dsuDragJustMoved = true;
-            fig.scrollLeft = drag.lx - dx;
-            fig.scrollTop = drag.ly - dy;
+            var dx = e.clientX - drag.x;
+            if (Math.abs(dx) > 3) dsuDragJustMoved = true;
+            var dt = -dx / (drag.wpx || 1) * drag.span;
+            var a = drag.lx + dt, b = a + drag.span;
+            win = clampWin(a, b);
+            render();
           }
         });
         document.addEventListener('mouseup', function(){ drag = null; });
+        render();
       });
     })();
     </script>

@@ -1,4 +1,4 @@
-# ds-usage-export（DeepSeek 用量导出工具）v1.0.5
+# ds-usage-export（DeepSeek 用量导出工具）v1.0.6
 
 > **English**: [README.en.md](README.en.md)
 
@@ -18,7 +18,7 @@
 |---|---|
 | 登录态复用 | 读取浏览器 `localStorage['userToken']`（提供控制台一行命令），保存到本机 `~/.dsusage/config.json`，CLI 与 Web 共用 |
 | 一键导出 | `dsu go --start X --end Y`：全部格式 + 官方原始数据 + 自动打开 HTML 报告 |
-| 报纸风 HTML 报告 | 自包含 `report.html`：报头 + 头版数据（完整数字）+ 内联 SVG 图表（每日费用 / Token 构成 / 小时走势 / 模型占比 / API Key 排名）+ 数据表；图表带**悬停提示**（**点击可钉住**）、**滚轮横滑**（数据多时）、动效，报纸编辑部排版 |
+| 报纸风 HTML 报告 | 自包含 `report.html`：报头 + 头版数据（完整数字）+ 内联 SVG 图表（每日费用 / Token 构成 / 小时走势 / 模型占比 / API Key 排名）+ 数据表；图表支持**滚轮/控件缩放**（带动效）、**悬停与点击钉住**数值提示，报纸编辑部排版 |
 | 小时级明细 | `hourly` 粒度：逐日请求（24h 窗口）强制平台返回小时桶，跨天合并为连续小时序列 |
 | 多粒度 | `auto`（单日=小时、多日=按服务端粒度）、`hourly`、`daily` |
 | 超长周期 | 任意范围自动按 ≤30 天分片抓取，去重合并 |
@@ -29,6 +29,18 @@
 | 命令行 + Web | `dsu` 子命令与本地 Web 界面（报纸编辑风，http://127.0.0.1:8321）双入口 |
 | 多语言 | 中文（默认）/ English：CLI、HTML 报告、Web 界面均支持；自动检测或 `--lang zh\|en` |
 | 容错 | 429/5xx 自动退避重试；Token 失效明确提示；`dsu diagnose` 排查平台数据结构 |
+
+## 界面预览
+
+**报纸风 HTML 图表报告**（图表可滚轮/控件缩放、悬停与点击钉住查看数值）
+
+![中文报告示例](examples/screenshots/report_zh.png)
+
+![英文报告示例](examples/screenshots/report_en.png)
+
+**本地 Web 界面**（报纸编辑风，支持中英文切换）
+
+![Web 界面](examples/screenshots/webui.png)
 
 ## 快速开始
 
@@ -171,7 +183,9 @@ python -m unittest discover -s tests -v
 
 ## 版本历史
 
-- **v1.0.5**（当前）：图表滚轮横滑 + 点击钉住数值提示；新增内部开发文档 DEVELOPMENT.md；
+- **v1.0.6**（当前）：图表滚轮改为**缩放**（鼠标锚点、带动效）+ 控件放大/缩小/复位 + 缩放后拖拽平移；
+  README 添加实例截图；版本 tag 1.0.6。
+- **v1.0.5**：图表滚轮横滑 + 点击钉住数值提示；新增内部开发文档 DEVELOPMENT.md（仅本地，不上传）；
   版本 tag 1.0.5。
 - **v1.0.4**：多语言（中文/English，CLI + HTML 报告 + Web 界面）；修复 Web 服务
   favicon/404 错误刷屏；版本 tag 1.0.4。

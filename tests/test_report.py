@@ -83,12 +83,16 @@ class TestReport(unittest.TestCase):
                     "donut-seg", "pt-hit", "v-bar", "h-bar"):
             self.assertIn(css, html_text, f"缺少动效 {css}")
 
-    def test_tooltip_pin_and_wheel_scroll(self):
+    def test_tooltip_pin_and_zoom(self):
         html_text = render_report(self.ds, self.tables, self.totals, self.meta)
-        for token in ("dsu-tip", "pinned", "data-tip", "scrollLeft",
-                      "fig::-webkit-scrollbar", "closest('[data-tip]')",
+        for token in ("dsu-tip", "pinned", "data-tip", "closest('[data-tip]')",
                       "Escape", "pre-line"):
             self.assertIn(token, html_text, f"缺少交互元素 {token}")
+        # 缩放：滚轮放大 + 控件 + 动效
+        for token in ("fig-zoom", "z-in", "z-out", "z-reset",
+                      "transformOrigin", "scale(", "deltaY", "transition: transform",
+                      "dsuDragJustMoved"):
+            self.assertIn(token, html_text, f"缺少缩放元素 {token}")
 
     def test_many_bars_scrollable(self):
         """数据点多时图表加宽并支持滚轮横滑。"""
@@ -111,10 +115,10 @@ class TestReport(unittest.TestCase):
         tables = build_tables(ds)
         totals = compute_totals(ds)
         html_text = render_report(ds, tables, totals, self.meta)
-        self.assertIn("width:1020px", html_text)   # 30 根柱 → 宽 SVG 可横滑 (30*34)
+        self.assertIn("width:1020px", html_text)   # 30 根柱 → 宽 SVG 便于缩放后平移 (30*34)
         self.assertIn("min-width:1020px", html_text)
-        self.assertIn("scrollWidth", html_text)
         self.assertIn("overflow-x: auto", html_text)
+        self.assertIn("scrollLeft", html_text)      # 缩放后拖拽平移仍存在
 
     def test_full_number_display(self):
         """头版数据必须显示完整数字，不能缩写为 1.3B 之类。"""

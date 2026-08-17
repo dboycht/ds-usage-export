@@ -52,7 +52,7 @@ def _svg_wrap(inner: str, w: int, h: int, scrollable: bool = False) -> str:
         style = f"display:block;width:{w}px;min-width:{w}px;height:auto;background:{PAPER};"
     else:
         style = f"display:block;max-width:{w}px;height:auto;background:{PAPER};"
-    return (f'<svg viewBox="0 0 {w} {h}" width="100%" role="img" '
+    return (f'<svg class="fig-zoom" viewBox="0 0 {w} {h}" width="100%" role="img" '
             f'xmlns="http://www.w3.org/2000/svg" style="{style}">{inner}</svg>')
 
 
@@ -498,16 +498,23 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
     ]
 
     charts: List[str] = []
+    zoom_tools = (f'<button class="z-out" title="{esc(tr(lang, "zoom_out"))}">−</button>'
+                  f'<button class="z-in" title="{esc(tr(lang, "zoom_in"))}">＋</button>'
+                  f'<button class="z-reset" title="{esc(tr(lang, "zoom_reset"))}">↺</button>')
+
+    def _fig(svg_html: str) -> str:
+        return f'<div class="fig"><div class="fig-tools">{zoom_tools}</div>{svg_html}</div>'
+
     if cost_rows and any(v > 0 for _, v in cost_rows):
-        charts.append(f'<div class="fig">{chart_bar(cost_rows, tr(lang, "chart_daily_cost"), tr(lang, "cost_total"))}</div>')
+        charts.append(_fig(chart_bar(cost_rows, tr(lang, "chart_daily_cost"), tr(lang, "cost_total"))))
     if stacked and any(a + b + c > 0 for _, a, b, c in stacked):
-        charts.append(f'<div class="fig">{chart_stacked(stacked, tr(lang, "chart_daily_tokens"), lang=lang)}</div>')
+        charts.append(_fig(chart_stacked(stacked, tr(lang, "chart_daily_tokens"), lang=lang)))
     if hourly and token_rows:
-        charts.append(f'<div class="fig">{chart_line(token_rows, tr(lang, "chart_hourly_tokens"), "Token")}</div>')
+        charts.append(_fig(chart_line(token_rows, tr(lang, "chart_hourly_tokens"), "Token")))
     if model_items:
-        charts.append(f'<div class="fig">{chart_donut(model_items, tr(lang, "chart_model_share"), lang=lang)}</div>')
+        charts.append(_fig(chart_donut(model_items, tr(lang, "chart_model_share"), lang=lang)))
     if key_items:
-        charts.append(f'<div class="fig">{chart_hbar(key_items, tr(lang, "chart_key_rank"))}</div>')
+        charts.append(_fig(chart_hbar(key_items, tr(lang, "chart_key_rank"))))
 
     # ---- 数据表 ----
     tables_html = []
@@ -575,11 +582,19 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
                  text-overflow: clip; }}
       .stat-s {{ font-size: 9px; color: {INK_FAINT}; letter-spacing: 2px; }}
       .fig {{ margin: 14px 0; border: 1px solid {GRAY1}; padding: 10px; background: {PAPER};
-              overflow-x: auto; }}
+              overflow-x: auto; position: relative; }}
       .fig svg {{ border-bottom: 1px dashed {GRAY1}; }}
       .fig::-webkit-scrollbar {{ height: 8px; }}
       .fig::-webkit-scrollbar-track {{ background: {PAPER2}; }}
       .fig::-webkit-scrollbar-thumb {{ background: {GRAY2}; border-radius: 4px; }}
+      /* ---- 缩放工具条与动画 ---- */
+      .fig-tools {{ display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 6px; }}
+      .fig-tools button {{ background: {PAPER}; border: 1px solid {INK_SOFT}; color: {INK};
+                           font-family: {FONT}; font-size: 13px; line-height: 1;
+                           padding: 4px 11px; cursor: pointer; }}
+      .fig-tools button:hover {{ background: {INK}; color: {PAPER}; }}
+      svg.fig-zoom {{ transform-origin: 0 0; transition: transform .25s ease;
+                      will-change: transform; }}
       /* ---- 自绘提示气泡（悬停查看 / 点击钉住） ---- */
       .dsu-tip {{ position: fixed; z-index: 999; max-width: 340px; padding: 8px 12px;
                   background: #fffdf6; border: 1.5px solid {INK};
@@ -652,6 +667,7 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
       tip.className = 'dsu-tip';
       document.body.appendChild(tip);
       var pinned = false;
+      var dsuDragJustMoved = false;
       function place(x, y){{
         var r = tip.getBoundingClientRect();
         var left = x + 14, top = y + 14;
@@ -675,6 +691,7 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
         if (tip.style.display !== 'none') place(e.clientX, e.clientY);
       }});
       document.addEventListener('click', function(e){{
+        if (dsuDragJustMoved){{ dsuDragJustMoved = false; return; }}
         var t = e.target.closest('[data-tip]');
         if (t){{
           pinned = !pinned;
@@ -689,14 +706,42 @@ def render_report(ds: UsageDataset, tables: List[ExportTable], totals: Dict[str,
       }});
       // 移除原生 <title>，避免与自绘气泡重复提示
       document.querySelectorAll('[data-tip] title').forEach(function(t){{ t.remove(); }});
-      // 滚轮横滑：图表内容超出容器宽度时，滚动轮改为水平滚动
+      // 图表缩放：滚轮以鼠标为锚点放大/缩小（带动效）；控件 ＋/−/↺；放大后可拖拽平移
       document.querySelectorAll('.fig').forEach(function(fig){{
+        var svg = fig.querySelector('svg');
+        var scale = 1;
+        function setScale(s, ox, oy){{
+          s = Math.min(6, Math.max(1, s));
+          if (ox != null) svg.style.transformOrigin = ox + 'px ' + oy + 'px';
+          svg.style.transform = 'scale(' + s + ')';
+          scale = s;
+        }}
         fig.addEventListener('wheel', function(e){{
-          if (fig.scrollWidth > fig.clientWidth + 2){{
-            fig.scrollLeft += e.deltaY;
-            e.preventDefault();
-          }}
+          e.preventDefault();
+          var r = fig.getBoundingClientRect();
+          var next = scale * (e.deltaY < 0 ? 1.18 : 1 / 1.18);
+          setScale(next, e.clientX - r.left, e.clientY - r.top);
         }}, {{ passive: false }});
+        var zi = fig.querySelector('.z-in'), zo = fig.querySelector('.z-out'),
+            zr = fig.querySelector('.z-reset');
+        if (zi) zi.addEventListener('click', function(e){{ e.stopPropagation(); setScale(scale * 1.3); }});
+        if (zo) zo.addEventListener('click', function(e){{ e.stopPropagation(); setScale(scale / 1.3); }});
+        if (zr) zr.addEventListener('click', function(e){{ e.stopPropagation(); setScale(1); }});
+        var drag = null;
+        fig.addEventListener('mousedown', function(e){{
+          if (scale > 1 && e.button === 0 && !e.target.closest('.fig-tools')){{
+            drag = {{ x: e.clientX, y: e.clientY, lx: fig.scrollLeft, ly: fig.scrollTop }};
+          }}
+        }});
+        document.addEventListener('mousemove', function(e){{
+          if (drag){{
+            var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dsuDragJustMoved = true;
+            fig.scrollLeft = drag.lx - dx;
+            fig.scrollTop = drag.ly - dy;
+          }}
+        }});
+        document.addEventListener('mouseup', function(){{ drag = null; }});
       }});
     }})();
     </script>
